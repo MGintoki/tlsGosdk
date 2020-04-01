@@ -65,10 +65,10 @@ func In_array(s string, slice []string) bool {
 }
 
 type chain struct {
-	Appid   string      `json:"appid"`
-	Appkey  string      `json:"appkey"`
-	Channel interface{} `json:"channel"`
-	Alias   string      `json:"alias,omitempty"`
+	Appid   string `json:"appid"`
+	Appkey  string `json:"appkey"`
+	Channel int    `json:"channel"`
+	Alias   string `json:"alias,omitempty"`
 }
 
 func FormatChains(chains []map[string]string) []chain {
@@ -77,10 +77,10 @@ func FormatChains(chains []map[string]string) []chain {
 		if k == 0 {
 			// channel string
 			chainData[k] = chain{
-				Appid:   v["appid"],
-				Appkey:  v["appkey"],
-				Channel: v["channel"],
+				Appid:  v["appid"],
+				Appkey: v["appkey"],
 			}
+			chainData[k].Channel, _ = strconv.Atoi(v["channel"])
 		} else {
 			var ok bool
 			chainData[k] = chain{

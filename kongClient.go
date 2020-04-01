@@ -499,10 +499,10 @@ func (c *kongClient) CallByChain(
 	targetAppId := chainData[len(chainData)-1].Appid
 	targetChannelAlias := MakeChains(chainData)
 	// 验证是否第一次调用，去注册中心注册调用关系
-	err = c.checkIsFirstRequest(chainData, targetChannelAlias)
+	/*err = c.checkIsFirstRequest(chainData, targetChannelAlias)
 	if err != nil {
 		return
-	}
+	}*/
 	// 请求链接
 	api = c.makeUrl(targetAppId, targetChannelAlias, api)
 	// token中只有自身和目标服务
