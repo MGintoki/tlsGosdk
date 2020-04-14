@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"github.com/pretty66/gosdk/errno"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
@@ -140,4 +141,16 @@ func requestError(response *http.Response) error {
 		body, _ := ioutil.ReadAll(response.Body)
 		return errno.RESPONSE_OTHER.SetCode(response.StatusCode, string(body))
 	}
+}
+
+//生成指定长度的字符串（包括数字）
+func GetRandom(l int) []byte {
+	str := "0123456789abcdefghijklmnopqrstuvwxyz"
+	bytes := []byte(str)
+	result := []byte{}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < l; i++ {
+		result = append(result, bytes[r.Intn(len(bytes))])
+	}
+	return result
 }

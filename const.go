@@ -87,8 +87,9 @@ const (
 	REGISTER_APPID = "xrpkalflbedhowhju6cqszg0p73zd8qu"
 )
 
+//定义加密套件名字
 const (
-	IVAES = "IVAESIVAESIVAESIVAESIVAE"
+	RSA_AES_CBC_SHA256_KEY = "RSA_AES_CBC_SHA256"
 )
 
 type fileStruct struct {
