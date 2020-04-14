@@ -1,9 +1,9 @@
 package cipherSuites
 
 import (
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"github.com/wumansgy/goEncrypt"
 	"reflect"
 	"testing"
 )
@@ -127,176 +127,97 @@ func TestRSA_AES_CBC_SHA256_AsymmetricKeyDecrypt(t *testing.T) {
 }
 
 func TestRSA_AES_CBC_SHA256_AsymmetricKeyEncrypt(t *testing.T) {
+	rsa := NewRSA_AES_CBC_SHA256Model()
 	privateKey := []byte(privateKey)
 	publicKey := []byte(publicKey)
-	msg := []byte("RSA数字签名测试JLKSDJFLJSLKDFJLKSDFJJ")
-	signmsg, err := goEncrypt.RsaSign(msg, privateKey)
+	plaintext := []byte("床前明月光，疑是地上霜,举头望明月，低头学编程dadsad c床前明月光，疑是地上霜,举头望明月，低头学编程dadsad c" +
+		"床前明月光，疑是地上霜,举头望明月，低头学编程dadsad c")
+	// 直接传入明文和公钥加密得到密文
+	fmt.Println(len(plaintext))
+	fmt.Println("hfjkashjfjak")
+	crypttext, err := rsa.AsymmetricKeyEncrypt(plaintext, publicKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("密文", hex.EncodeToString(crypttext))
+	// 解密操作，直接传入密文和私钥解密操作，得到明文
+	plaintext, err = rsa.AsymmetricKeyDecrypt(crypttext, privateKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("明文：", string(plaintext))
+
+}
+
+func TestRSA_AES_CBC_SHA256_AsymmetricKeySign(t *testing.T) {
+
+}
+
+func TestRSA_AES_CBC_SHA256_AsymmetricKeyVerify(t *testing.T) {
+	rsa := NewRSA_AES_CBC_SHA256Model()
+	privateKey := []byte(privateKey)
+	publicKey := []byte(publicKey)
+	msg := []byte("RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfs" +
+		"dfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs" +
+		"RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfds" +
+		"fdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs" +
+		"RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfds" +
+		"fsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs")
+	signmsg, err := rsa.AsymmetricKeySign(msg, privateKey)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	fmt.Println("RSA数字签名的消息为：", hex.EncodeToString(signmsg))
 
-}
-
-func TestRSA_AES_CBC_SHA256_AsymmetricKeySign(t *testing.T) {
-	type args struct {
-		data       []byte
-		privateKey []byte
-	}
-	tests := []struct {
-		name     string
-		args     args
-		wantSign []byte
-		wantErr  bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			gotSign, err := c.AsymmetricKeySign(tt.args.data, tt.args.privateKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("AsymmetricKeySign() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotSign, tt.wantSign) {
-				t.Errorf("AsymmetricKeySign() gotSign = %v, want %v", gotSign, tt.wantSign)
-			}
-		})
-	}
-}
-
-func TestRSA_AES_CBC_SHA256_AsymmetricKeyVerify(t *testing.T) {
-	type args struct {
-		data      []byte
-		sign      []byte
-		publicKey []byte
-	}
-	tests := []struct {
-		name     string
-		args     args
-		wantFlag bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			if gotFlag := c.AsymmetricKeyVerify(tt.args.data, tt.args.sign, tt.args.publicKey); gotFlag != tt.wantFlag {
-				t.Errorf("AsymmetricKeyVerify() = %v, want %v", gotFlag, tt.wantFlag)
-			}
-		})
-	}
-}
-
-func TestRSA_AES_CBC_SHA256_CipherSuiteKey(t *testing.T) {
-	tests := []struct {
-		name string
-		want string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			if got := c.CipherSuiteKey(); got != tt.want {
-				t.Errorf("CipherSuiteKey() = %v, want %v", got, tt.want)
-			}
-		})
+	// 验证数字签名正不正确
+	result := rsa.AsymmetricKeyVerifySign(msg, signmsg, publicKey)
+	if result { // 如果result返回的是 true 那么就是本人签名，否则不是，只有私钥加密，相对的公钥验证才可以认为是本人
+		fmt.Println("RSA数字签名正确，是本人")
+	} else {
+		fmt.Println("RSA数字签名错误，不是本人")
 	}
 }
 
 func TestRSA_AES_CBC_SHA256_CreateMAC(t *testing.T) {
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantMAC []byte
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			if gotMAC := c.CreateMAC(tt.args.data); !reflect.DeepEqual(gotMAC, tt.wantMAC) {
-				t.Errorf("CreateMAC() = %v, want %v", gotMAC, tt.wantMAC)
-			}
-		})
-	}
+	rsa := NewRSA_AES_CBC_SHA256Model()
+	msg := []byte("RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs" +
+		"RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs" +
+		"RSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfsRSA数字签名测试sdfsdfsfsfsdfsfsfsfdsfdsfsfs")
+	mac := rsa.CreateMAC(msg)
+	fmt.Println(string(mac))
 }
 
 func TestRSA_AES_CBC_SHA256_CreateSymmetricKey(t *testing.T) {
-	tests := []struct {
-		name             string
-		wantSymmetricKey []byte
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			if gotSymmetricKey := c.CreateSymmetricKey(); !reflect.DeepEqual(gotSymmetricKey, tt.wantSymmetricKey) {
-				t.Errorf("CreateSymmetricKey() = %v, want %v", gotSymmetricKey, tt.wantSymmetricKey)
-			}
-		})
-	}
-}
-
-func TestRSA_AES_CBC_SHA256_SymmetricKeyDecrypt(t *testing.T) {
-	type args struct {
-		cipherText   []byte
-		symmetricKey []byte
-	}
-	tests := []struct {
-		name          string
-		args          args
-		wantPlainText []byte
-		wantErr       bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			gotPlainText, err := c.SymmetricKeyDecrypt(tt.args.cipherText, tt.args.symmetricKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SymmetricKeyDecrypt() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotPlainText, tt.wantPlainText) {
-				t.Errorf("SymmetricKeyDecrypt() gotPlainText = %v, want %v", gotPlainText, tt.wantPlainText)
-			}
-		})
-	}
+	rsa := NewRSA_AES_CBC_SHA256Model()
+	key := rsa.CreateSymmetricKey()
+	fmt.Println(string(key))
 }
 
 func TestRSA_AES_CBC_SHA256_SymmetricKeyEncrypt(t *testing.T) {
-	type args struct {
-		plainText    []byte
-		symmetricKey []byte
+	rsa := NewRSA_AES_CBC_SHA256Model()
+	plaintext := []byte("床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 " +
+		"床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 " +
+		"床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 " +
+		"床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 " +
+		"床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 " +
+		"床前明月光，疑是地上霜，举头望明月，学习go语言 床前明月光，疑是地上霜，举头望明月，学习go语言 ")
+	fmt.Println("明文为：", string(plaintext))
+
+	// 传入明文和自己定义的密钥，密钥为16字节 可以自己传入初始化向量,如果不传就使用默认的初始化向量,16字节
+	cryptText, err := rsa.SymmetricKeyEncrypt(plaintext, []byte("vy0gr36k34sn0focji6m6dbfvy2m23iy"))
+	if err != nil {
+		fmt.Println(err)
 	}
-	tests := []struct {
-		name           string
-		args           args
-		wantCipherText []byte
-		wantErr        bool
-	}{
-		// TODO: Add test cases.
+	fmt.Println("AES的CBC模式加密后的密文为:", base64.StdEncoding.EncodeToString(cryptText))
+
+	// 传入密文和自己定义的密钥，需要和加密的密钥一样，不一样会报错 可以自己传入初始化向量,如果不传就使用默认的初始化向量,16字节
+	newplaintext, err := rsa.SymmetricKeyDecrypt(cryptText, []byte("vy0gr36k34sn0focji6m6dbfvy2m23iy"))
+	if err != nil {
+		fmt.Println(err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &RSA_AES_CBC_SHA256{}
-			gotCipherText, err := c.SymmetricKeyEncrypt(tt.args.plainText, tt.args.symmetricKey)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("SymmetricKeyEncrypt() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(gotCipherText, tt.wantCipherText) {
-				t.Errorf("SymmetricKeyEncrypt() gotCipherText = %v, want %v", gotCipherText, tt.wantCipherText)
-			}
-		})
-	}
+
+	fmt.Println("AES的CBC模式解密完：", string(newplaintext))
 }
