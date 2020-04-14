@@ -87,6 +87,10 @@ const (
 	REGISTER_APPID = "xrpkalflbedhowhju6cqszg0p73zd8qu"
 )
 
+const (
+	IVAES = "IVAESIVAESIVAESIVAESIVAE"
+)
+
 type fileStruct struct {
 	fileKey  string
 	fileName string

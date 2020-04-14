@@ -14,8 +14,6 @@ type handshake struct {
 	//serverFinished    *serverFinished
 }
 
-type symmetricKey struct {
-}
 type clientHello struct {
 	handshake
 	isClientEncryptRequired bool //是否需要加密
@@ -39,11 +37,18 @@ type clientKeyExchange struct {
 
 type serverFinished struct {
 	handshake
-	MAC string
+	sessionId string
+	MAC       string
 }
 
 type applicationData struct {
 	handshake
 	data map[string]interface{}
 	MAC  string
+}
+
+type alert struct {
+	handshake
+	stateCode string
+	msg       string
 }

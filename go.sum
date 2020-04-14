@@ -1,2 +1,4 @@
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
+github.com/wumansgy/goEncrypt v0.0.0-20190822060801-cf9a6f8787e4 h1:U1nwn/4ayKOKmaa8ZGK2z4BAamTm4sA+YvRiXm+gbxQ=
+github.com/wumansgy/goEncrypt v0.0.0-20190822060801-cf9a6f8787e4/go.mod h1:d0Tq90dl4xqZEiphQ7dAVEPxcefmY2hSiATq3BfgsVY=
