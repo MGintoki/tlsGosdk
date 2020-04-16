@@ -1,12 +1,12 @@
 package cert
 
-type pemCertLoader struct {
+type PemCertLoader struct {
 }
 
-func (c *pemCertLoader) getCert() string {
+func (c *PemCertLoader) GetCert() string {
 	return ""
 }
 
-func (c *pemCertLoader) getCertChain() []string {
+func (c *PemCertLoader) GetCertChain() []string {
 	return nil
 }

@@ -2,12 +2,12 @@ package gosdk
 
 import "time"
 
-type certLoader interface {
+type CertLoader interface {
 	GetCert() string
 	GetCertChain() []string
 }
 
-type cert struct {
+type Cert struct {
 	cert      string
 	certChain string
 	state     string
@@ -15,7 +15,7 @@ type cert struct {
 	notAfter  time.Time
 }
 
-func verifyCert(cert *cert) (stateCode string) {
+func verifyCert(cert *Cert) (stateCode string) {
 
 	return ""
 }

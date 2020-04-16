@@ -9,7 +9,7 @@ type TlsClient struct {
 	clientInfo  string
 	serverInfo  string
 	requestPath string
-	tlsConfig   *tlsConfig
+	tlsConfig   *TlsConfig
 }
 
 func HelloServer(w http.ResponseWriter, req *http.Request) {

@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"github.com/pretty66/gosdk"
 	"github.com/pretty66/gosdk/errno"
 	"log"
 	"runtime"
@@ -26,20 +25,27 @@ func NewRSA_AES_CBC_SHA256Model() *RSA_AES_CBC_SHA256 {
 	return _RSA_AES_CBC_SHA256
 }
 
-func (c *RSA_AES_CBC_SHA256) CipherSuiteKey() string {
-	return gosdk.RSA_AES_CBC_SHA256_KEY
+func (c *RSA_AES_CBC_SHA256) CipherSuiteKey() int {
+	return CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]
 }
 
 const (
+	//对称密钥的长度
 	KEY_LENGTH = 32
-	IVAES      = "IVAESIVAESIVAESI"
+	//偏移量，相同的明文和密钥，偏移量不同，密钥也会不同
+	//偏移量无保密要求，有随机要求
+	IVAES = "IVAESIVAESIVAESI"
 )
 
 type RSA_AES_CBC_SHA256 struct {
 }
 
+type sss_s struct {
+}
+
 func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey() (symmetricKey []byte) {
-	return gosdk.GetRandom(KEY_LENGTH)
+
+	return GetRandom(KEY_LENGTH)
 }
 
 func (c *RSA_AES_CBC_SHA256) AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error) {

@@ -4,28 +4,33 @@ import (
 	"time"
 )
 
-type tlsConfig struct {
+type TlsConfig struct {
 	sessionId      string
 	isClient       bool
-	handshakeState string
+	handshakeState StateMachineInterface
 	isCertRequired bool
 	serverName     string
-	state          string
-	cipherSuites   cipherSuite
-	cipherSuite    cipherSuite
-	time           time.Time
-	timeout        time.Time
+	state          int
+	cipherSuites   []int
+	cipherSuite    int
+	time           time.Duration
+	timeout        time.Duration
 	randoms        []string
 	keypair        keypair
-	symmetricKey   symmetricKey
+	symmetricKey   SymmetricKey
 	cert           string
 	certChain      []string
-	handshakeMsgs  []handshake
+	handshakeMsgs  map[int]Handshake
 	logs           []string
 }
 
+const (
+	TLS_STATE_ACTIVING = 1
+	TLS_STATE_BROKE    = 0
+)
+
 //根据sessionId实例化一个tlsConfig
-func ReuseSession(sessionId, filepath string) *tlsConfig {
+func ReuseSession(sessionId, filepath string) *TlsConfig {
 	return nil
 }
 
@@ -43,7 +48,7 @@ func IfClientRequiredCert() bool {
 }
 
 func ClientInitTlsConfig() {
-	config := &tlsConfig{}
+	config := &TlsConfig{}
 	config.isClient = true
 	//config.handshakeState =
 }

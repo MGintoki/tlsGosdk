@@ -59,7 +59,7 @@ Be2iaHR34L5+DQ6j2UMii2ho5HbazOxS6TcbGeuo7q7gAXP71WLZn9melA==
 `
 )
 
-func TestNewRSA_AES_CBC_SHA256Model(t *testing.T) {
+func TestNewRSA_AES_CBC_SHA256(t *testing.T) {
 	tests := []struct {
 		name string
 		want *RSA_AES_CBC_SHA256
@@ -69,7 +69,7 @@ func TestNewRSA_AES_CBC_SHA256Model(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewRSA_AES_CBC_SHA256Model(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewRSA_AES_CBC_SHA256Model() = %v, want %v", got, tt.want)
+				t.Errorf("NewRSA_AES_CBC_SHA256() = %v, want %v", got, tt.want)
 			}
 		})
 	}
