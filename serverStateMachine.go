@@ -7,7 +7,7 @@ func (c *ServerInitState) currentState() int {
 	return CLIENT_INIT_STATE
 }
 
-func (c *ServerInitState) handleHandshake(tlsConfig *TlsConfig, handshake *Handshake) {
+func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }
 
@@ -18,6 +18,6 @@ func (c *ServerReceivedClientHello) currentState() int {
 	return CLIENT_INIT_STATE
 }
 
-func (c *ServerReceivedClientHello) handleHandshake(tlsConfig *TlsConfig, handshake *Handshake) {
+func (c *ServerReceivedClientHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }

@@ -5,7 +5,7 @@ import "time"
 type Handshake struct {
 	version       string
 	handshakeType int //握手类型，是协商还是警告
-	handShakeCode int
+	actionCode    int
 	sessionId     string
 	sendTime      time.Time //发送时间
 
@@ -65,7 +65,7 @@ type StateMachine struct {
 //将处理握手消息以及状态封装到 每个状态自己的结构体实现的handleHandshake方法中
 type StateMachineInterface interface {
 	currentState() int
-	handleHandshake(tlsConfig *TlsConfig, handshake *Handshake)
+	handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error)
 }
 
 //客户端与服务端定义状态码
@@ -100,8 +100,21 @@ const (
 
 	APP_DATA_CODE = 300
 
-	ALERT_1 = 401
-
+	ALERT_1_CODE = 401
 	//下面是预留的alert 的code
 
+	//下面是非握手消息的actionCode
+	SEND_CLIENT_HELLO_CODE = 501
 )
+
+//定义路由
+var RouteMap map[int]string = map[int]string{
+	SEND_CLIENT_HELLO_CODE: "/handClientHello",
+}
+
+const REQUEST_URL = "http://127.0.0.1:8081"
+const LISTEN_URL = "localhost:8081"
+
+func GetHSRequestRoute(actionCode int) string {
+	return REQUEST_URL + RouteMap[actionCode]
+}

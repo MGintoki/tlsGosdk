@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func HelloServer2(w http.ResponseWriter, req *http.Request) {
@@ -69,17 +70,31 @@ func TestClientStartTLS(t *testing.T) {
 
 	client.tlsConfig = clientTlsConfig
 	fmt.Println("client tls config ok")
+	fmt.Println("handshake state -> client_init")
 	//生成client hello
 	clientHello := &ClientHello{
 		Handshake: Handshake{
-			handShakeCode: CLIENT_HELLO_CODE,
+			actionCode: CLIENT_HELLO_CODE,
 		},
 		isClientEncryptRequired: true,
 		isCertRequired:          true,
 		cipherSuites:            []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
 	}
-
+	chHandshake := &Handshake{
+		version:           "",
+		handshakeType:     0,
+		actionCode:        CLIENT_HELLO_CODE,
+		sessionId:         "",
+		sendTime:          time.Time{},
+		clientHello:       clientHello,
+		serverHello:       nil,
+		clientKeyExchange: nil,
+		serverFinished:    nil,
+		appData:           nil,
+		alert:             nil,
+	}
 	//发送client hello
+	client.tlsConfig.handshakeState.handleAction(clientTlsConfig, chHandshake, SEND_CLIENT_HELLO_CODE)
 	fmt.Println("send client hello")
 }
 
@@ -120,12 +135,13 @@ func TestServerStartTLS(t *testing.T) {
 		//测试的client hello
 		clientHello := &ClientHello{
 			Handshake: Handshake{
-				handShakeCode: CLIENT_HELLO_CODE,
+				actionCode: CLIENT_HELLO_CODE,
 			},
 			isClientEncryptRequired: true,
 			isCertRequired:          true,
 			cipherSuites:            []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
 		}
-		server.tlsConfig.handshakeState.handleHandshake(server.tlsConfig, clientHello)
+		fmt.Println(clientHello)
+		server.tlsConfig.handshakeState.handleAction(server.tlsConfig, nil, CLIENT_HELLO_CODE)
 	}
 }
