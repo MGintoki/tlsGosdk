@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"testing"
+	"time"
 )
 
 func Test_test1(t *testing.T) {
@@ -47,13 +49,166 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 
 		}
 		w.Write(tmpMapByte)
+		w.Write(reqBodyByte)
 	default:
-
 	}
+}
+
+func handleResponseHandshake(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	ch := &ClientHello{
+		IsClientEncryptRequired: true,
+		IsCertRequired:          false,
+	}
+	hs := &Handshake{
+		Version:       "version",
+		HandshakeType: 1,
+	}
+	hs.ClientHello = ch
+	hsMarshal, err := json.Marshal(hs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Write(hsMarshal)
+}
+func TestHelloWorldServer(t *testing.T) {
+	http.HandleFunc("/helloWorld", helloWorld)
+	http.HandleFunc("/handshake", handleResponseHandshake)
+	http.ListenAndServe(LISTEN_URL, nil)
+}
+
+//测试自定义http client 发送 request
+func TestClient(t *testing.T) {
+	url := REQUEST_URL + "/"
+	client := http.Client{}
+	//设置请求超时时间
+	//client.Timeout = 1 * time.Second
+
+	//更为精细的控制超时时间
+	//tr := &http.Transport{
+	//	DialContext: (&net.Dialer{
+	//		Timeout:   30 * time.Second,
+	//		KeepAlive: 3000 * time.Millisecond,
+	//	}).DialContext,
+	//	TLSHandshakeTimeout: 10 *time.Second,
+	//	IdleConnTimeout: 90 * time.Second,
+	//	ResponseHeaderTimeout: 10 * time.Second,
+	//	ExpectContinueTimeout: 1 * time.Second,
+	//}
+	//client := &http.Client{
+	//	Transport: tr,
+	//}
+
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	response, err := client.Do(request)
+	//延迟读写流到执行的最后关闭
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s", body)
 
 }
 
-func TestHelloWorldServer(t *testing.T) {
-	http.HandleFunc("/helloWorld", helloWorld)
-	http.ListenAndServe(LISTEN_URL, nil)
+func TestHandshakeRequest(t *testing.T) {
+	url := REQUEST_URL + "/handshake"
+	client := http.Client{}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	response, err := client.Do(request)
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s", body)
+}
+
+func TestClientHelloWorldGet(t *testing.T) {
+	url := REQUEST_URL + "/helloWorld"
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(body)
+	}
+	fmt.Printf("%s", body)
+}
+
+func TestClientHelloWorldPost(t *testing.T) {
+	url := REQUEST_URL + "/"
+	postData := strings.NewReader(`{"test":"test"}`)
+	resp, err := http.Post(url, "application/json", postData)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(body)
+	}
+	fmt.Printf("%s", body)
+}
+
+type Handshake struct {
+	Version       string    `json:"version"`
+	HandshakeType int       `json:"handshakeType"` //握手类型，是协商还是警告
+	ActionCode    int       `json:"actionCode"`
+	SessionId     string    `json:"sessionId"`
+	SendTime      time.Time `json:"sendTime"` //发送时间
+
+	//初始化HandShake时，根据handshakeCode指定了生成下面具体的消息
+	ClientHello *ClientHello `json:"clientHello"`
+}
+
+type ClientHello struct {
+	IsClientEncryptRequired bool  `json:"isClientEncryptRequired"` //是否需要加密
+	IsCertRequired          bool  `json:"isCertRequired"`          //是否需要服务端证书，不需要的话，说明客户端从部署指定路径获取
+	CipherSuites            []int `json:"cipherSuites"`
+}
+type people struct {
+	name string
+	age  int
+}
+
+func TestMarshal(t *testing.T) {
+	hs := &Handshake{
+		Version:       "",
+		HandshakeType: 0,
+		ActionCode:    0,
+		SessionId:     "",
+		SendTime:      time.Time{},
+		ClientHello:   nil,
+	}
+	ch := &ClientHello{
+		IsClientEncryptRequired: false,
+		IsCertRequired:          false,
+		CipherSuites:            nil,
+	}
+	hs.ClientHello = ch
+	hsMarshal, err := json.Marshal(hs)
+	if err != nil {
+
+	}
+	fmt.Printf(string(hsMarshal))
+	chMarshal, err := json.Marshal(ch)
+	if err != nil {
+
+	}
+	fmt.Println(string(chMarshal))
+	p := &people{
+		name: "张三",
+		age:  22,
+	}
+	pMarshal, err := json.Marshal(p)
+	fmt.Println(pMarshal)
 }

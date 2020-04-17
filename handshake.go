@@ -3,62 +3,56 @@ package gosdk
 import "time"
 
 type Handshake struct {
-	version       string
-	handshakeType int //握手类型，是协商还是警告
-	actionCode    int
-	sessionId     string
-	sendTime      time.Time //发送时间
+	Version       string    `json:"version"`
+	HandshakeType int       `json:"handshakeType"` //握手类型，是协商还是警告
+	ActionCode    int       `json:"actionCode"`
+	SessionId     string    `json:"sessionId"`
+	SendTime      time.Time `json:"sendTime"` //发送时间
 
 	//初始化HandShake时，根据handshakeCode指定了生成下面具体的消息
-	clientHello       *ClientHello
-	serverHello       *ServerHello
-	clientKeyExchange *ClientKeyExchange
-	serverFinished    *ServerFinished
-	appData           *AppData
-	alert             *Alert
+	ClientHello       *ClientHello       `json:"clientHello"`
+	ServerHello       *ServerHello       `json:"serverHello"`
+	ClientKeyExchange *ClientKeyExchange `json:"clientKeyExchange"`
+	ServerFinished    *ServerFinished    `json:"serverFinished"`
+	AppData           *AppData           `json:"appData"`
+	Alert             *Alert             `json:"alert"`
 }
 
 type ClientHello struct {
-	Handshake
-	isClientEncryptRequired bool //是否需要加密
-	isCertRequired          bool //是否需要服务端证书，不需要的话，说明客户端从部署指定路径获取
-	cipherSuites            []int
+	IsClientEncryptRequired bool  `json:"isClientEncryptRequired"` //是否需要加密
+	IsCertRequired          bool  `json:"isCertRequired"`          //是否需要服务端证书，不需要的话，说明客户端从部署指定路径获取
+	CipherSuites            []int `json:"cipherSuites"`
 }
 
 type ServerHello struct {
-	Handshake
-	isServerEncryptRequired bool
-	cipherSuite             int
-	cert                    string   //服务端TLS证书
-	certVerifyChain         []string //服务端TLS证书验证链
+	IsServerEncryptRequired bool     `json:"isServerEncryptRequired"`
+	CipherSuite             int      `json:"cipherSuite"`
+	Cert                    string   `json:"cert"`            //服务端TLS证书
+	CertVerifyChain         []string `json:"certVerifyChain"` //服务端TLS证书验证链
 }
 
 type ClientKeyExchange struct {
-	Handshake
-	symmetricKey *SymmetricKey
-	MAC          string
+	SymmetricKey *SymmetricKey `json:"symmetricKey"`
+	MAC          string        `json:"MAC"`
 }
 
 type ServerFinished struct {
-	Handshake
-	sessionId string
-	MAC       string
+	SessionId string `json:"sessionId"`
+	MAC       string `json:"MAC"`
 }
 
 type AppData struct {
-	Handshake
-	data map[string]interface{}
-	MAC  string
+	Data map[string]interface{} `json:"data"`
+	MAC  string                 `json:"MAC"`
 }
 
 type Alert struct {
-	Handshake
-	alert string
-	msg   string
+	Alert string `json:"alert"`
+	Msg   string `json:"msg"`
 }
 
 type StateMachine struct {
-	stateMachineInterface StateMachineInterface
+	StateMachineInterface StateMachineInterface `json:"stateMachineInterface"`
 }
 
 //定义握手消息状态机，每个状态有一个自己的结构体，实现StateMachineInterface接口

@@ -3,9 +3,9 @@ package gosdk
 import "time"
 
 type keypair struct {
-	sessionId   string
-	privateKey  string
-	publicKey   string
-	keypairType string
-	createAt    time.Time
+	SessionId   string    `json:"sessionId"`
+	PrivateKey  string    `json:"privateKey"`
+	PublicKey   string    `json:"publicKey"`
+	KeypairType string    `json:"keypairType"`
+	CreateAt    time.Time `json:"createAt"`
 }

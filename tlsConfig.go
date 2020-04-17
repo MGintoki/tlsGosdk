@@ -5,23 +5,23 @@ import (
 )
 
 type TlsConfig struct {
-	sessionId      string
-	isClient       bool
-	handshakeState StateMachineInterface
-	isCertRequired bool
-	serverName     string
-	state          int
-	cipherSuites   []int
-	cipherSuite    int
-	time           time.Duration
-	timeout        time.Duration
-	randoms        []string
-	keypair        keypair
-	symmetricKey   SymmetricKey
-	cert           string
-	certChain      []string
-	handshakeMsgs  map[int]Handshake
-	logs           []string
+	SessionId      string                `json:"sessionId"`
+	IsClient       bool                  `json:"isClient"`
+	HandshakeState StateMachineInterface `json:"handshakeState"`
+	IsCertRequired bool                  `json:"isCertRequired"`
+	ServerName     string                `json:"serverName"`
+	State          int                   `json:"state"`
+	CipherSuites   []int                 `json:"cipherSuites"`
+	CipherSuite    int                   `json:"cipherSuite"`
+	Time           time.Duration         `json:"time"`
+	Timeout        time.Duration         `json:"timeout"`
+	Randoms        []string              `json:"randoms"`
+	Keypair        keypair               `json:"keypair"`
+	SymmetricKey   SymmetricKey          `json:"symmetricKey"`
+	Cert           string                `json:"cert"`
+	CertChain      []string              `json:"certChain"`
+	HandshakeMsgs  map[int]Handshake     `json:"handshakeMsgs"`
+	Logs           []string              `json:"logs"`
 }
 
 const (

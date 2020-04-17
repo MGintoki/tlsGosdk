@@ -2,7 +2,7 @@ package gosdk
 
 //将接口嵌套到结构体中，方便以后结构体的拓展
 type CipherSuite struct {
-	cipherSuiteInterface CipherSuiteInterface
+	CipherSuiteInterface CipherSuiteInterface `json:"cipherSuiteInterface"`
 }
 
 type CipherSuiteInterface interface {

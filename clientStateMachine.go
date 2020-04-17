@@ -32,10 +32,11 @@ func (c *ClientSentClientHello) currentState() int {
 }
 
 func (c *ClientSentClientHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	switch handshake.actionCode {
+	switch handshake.ActionCode {
 	case SERVER_HELLO_CODE:
 
 	}
+	return
 }
 
 type ClientReceivedServerHello struct {

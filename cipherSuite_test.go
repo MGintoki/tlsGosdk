@@ -15,7 +15,7 @@ func TestSha(t *testing.T) {
 func TestStruct(t *testing.T) {
 	cs := &CipherSuite{}
 	cs_rsa := cipherSuites.NewRSA_AES_CBC_SHA256Model()
-	cs.cipherSuiteInterface = cs_rsa
+	cs.CipherSuiteInterface = cs_rsa
 	//csi := &CipherSuiteInterface()
 	//plaintext := []byte("床前明月光，疑是地上霜，举头望明月，学习go语言")
 	//fmt.Println("明文为：", string(plaintext))
