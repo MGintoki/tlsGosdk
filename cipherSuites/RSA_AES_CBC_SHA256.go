@@ -11,9 +11,11 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
+	"github.com/pretty66/gosdk"
 	"github.com/pretty66/gosdk/errno"
 	"log"
 	"runtime"
+	"time"
 )
 
 var _RSA_AES_CBC_SHA256 *RSA_AES_CBC_SHA256
@@ -43,9 +45,19 @@ type RSA_AES_CBC_SHA256 struct {
 type sss_s struct {
 }
 
-func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey() (symmetricKey []byte) {
+func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (symmetricKey *gosdk.SymmetricKey) {
 
-	return GetRandom(KEY_LENGTH)
+	key := GetRandom(KEY_LENGTH)
+	sessionId := string(GetRandom(gosdk.UUID_LENGTH))
+	return &gosdk.SymmetricKey{
+		SessionId:    sessionId,
+		IsResumption: true,
+		KeyType:      "AES",
+		Key:          key,
+		CipherSuite:  gosdk.RSA_AES_CBC_SHA256,
+		CreatedAt:    time.Time{},
+		ExpiresAT:    time.Time{},
+	}
 }
 
 func (c *RSA_AES_CBC_SHA256) AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error) {

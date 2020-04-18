@@ -69,19 +69,29 @@ func TestClientStartTLS(t *testing.T) {
 		HandshakeMsgs:  hsmap,
 		Logs:           nil,
 	}
-
 	client.tlsConfig = clientTlsConfig
 	fmt.Println("client tls config ok")
 	fmt.Println("handshake state -> client_init")
-
 	//发送client hello
 	out, err := client.tlsConfig.HandshakeState.handleAction(clientTlsConfig, nil, CLIENT_HELLO_CODE)
 	if err != nil {
 		log.Fatal(err)
 	}
+	//如果server hello 中需要加密，client 进入 已接收server hello 状态
+	//如果不需要加密，进入非加密连接状态
+	if out.ActionCode == SERVER_HELLO_CODE && out.ServerHello.IsServerEncryptRequired {
+		client.tlsConfig.HandshakeState = &ClientReceivedServerHello{}
+		client.tlsConfig.IsEncryptRequired = true
+	} else if out.ActionCode == SERVER_HELLO_CODE && out.ServerHello.IsServerEncryptRequired == false {
+		client.tlsConfig.HandshakeState = &ClientNoEncryptConnection{}
+		client.tlsConfig.IsEncryptRequired = false
+	}
 	fmt.Println("send client hello success")
-	fmt.Println(out.ServerHello.Cert)
-	fmt.Println(out)
+	out, err = client.tlsConfig.HandshakeState.handleAction(client.tlsConfig, out, out.ActionCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func TestServerStartTLS(t *testing.T) {
@@ -137,6 +147,7 @@ func (c *TlsServer) handleTLS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	outByte, err := json.Marshal(out)
 	w.Write(outByte)
+	c.tlsConfig.HandshakeState = &ServerSendServerHelloState{}
 	fmt.Println("响应成功" + strconv.Itoa(out.ActionCode))
 
 	//w.Header().Set("Content-Type", "application/json; charset=utf-8")

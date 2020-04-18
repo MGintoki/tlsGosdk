@@ -9,7 +9,7 @@ type ServerInitState struct {
 }
 
 func (c *ServerInitState) currentState() int {
-	return CLIENT_INIT_STATE
+	return SERVER_INIT_STATE
 }
 
 func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
@@ -24,6 +24,7 @@ func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 			if handshake.ClientHello.IsClientEncryptRequired || tlsConfig.IsEncryptRequired {
 				serverHello := &ServerHello{
 					IsServerEncryptRequired: true,
+					PublicKey:               tlsConfig.Keypair.PublicKey,
 					CipherSuite:             0,
 				}
 				//根据客户端加密套件表和服务端加密套件表，协商合适的加密套件
@@ -59,9 +60,35 @@ type ServerReceivedClientHello struct {
 }
 
 func (c *ServerReceivedClientHello) currentState() int {
-	return CLIENT_INIT_STATE
+	return SERVER_RECEIVED_CLIENT_HELLO_STATE
 }
 
 func (c *ServerReceivedClientHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	panic("implement me")
+}
+
+type ServerSendServerHelloState struct {
+}
+
+func (s ServerSendServerHelloState) currentState() int {
+	return SERVER_SENT_SERVER_HELLO_STATE
+}
+
+func (s ServerSendServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	switch actionCode {
+	case CLIENT_KEY_EXCHANGE_CODE:
+		tlsConfig.SessionId = handshake.SessionId
+
+	}
+}
+
+type ServerReceivedClientKeyExchange struct {
+}
+
+func (s ServerReceivedClientKeyExchange) currentState() int {
+	return SERVER_RECEIVE_CLIENT_KEY_EXCHANGE_STATE
+}
+
+func (s ServerReceivedClientKeyExchange) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }

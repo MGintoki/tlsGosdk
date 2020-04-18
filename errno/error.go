@@ -73,8 +73,13 @@ var (
 	UPLOAD_ENCOUNTER_ERROR   = &Errno{1212, "upload encounter error"}
 
 	/**
-	 * from 2001-2010 cipher suite error
+	 * from 2001-2100 cipher suite error
 	 */
 	SYMMETRIC_KEY_INVALID = &Errno{2001, "invalid symmetric key length "}
 	PADDING_INVALID       = &Errno{2002, "invalid padding "}
+
+	/**
+	 * from 2101 - 2200 cert error
+	 */
+	CERT_VERIFY_ERROR = &Errno{2101, "cert verify failed "}
 )
