@@ -5,23 +5,24 @@ import (
 )
 
 type TlsConfig struct {
-	SessionId      string                `json:"sessionId"`
-	IsClient       bool                  `json:"isClient"`
-	HandshakeState StateMachineInterface `json:"handshakeState"`
-	IsCertRequired bool                  `json:"isCertRequired"`
-	ServerName     string                `json:"serverName"`
-	State          int                   `json:"state"`
-	CipherSuites   []int                 `json:"cipherSuites"`
-	CipherSuite    int                   `json:"cipherSuite"`
-	Time           time.Duration         `json:"time"`
-	Timeout        time.Duration         `json:"timeout"`
-	Randoms        []string              `json:"randoms"`
-	Keypair        keypair               `json:"keypair"`
-	SymmetricKey   SymmetricKey          `json:"symmetricKey"`
-	Cert           string                `json:"cert"`
-	CertChain      []string              `json:"certChain"`
-	HandshakeMsgs  map[int]Handshake     `json:"handshakeMsgs"`
-	Logs           []string              `json:"logs"`
+	SessionId         string                `json:"sessionId"`
+	IsClient          bool                  `json:"isClient"`
+	HandshakeState    StateMachineInterface `json:"handshakeState"`
+	IsEncryptRequired bool                  `json:"isEncryptRequired"`
+	IsCertRequired    bool                  `json:"isCertRequired"`
+	ServerName        string                `json:"serverName"`
+	State             int                   `json:"state"`
+	CipherSuites      []int                 `json:"cipherSuites"`
+	CipherSuite       int                   `json:"cipherSuite"`
+	Time              time.Time             `json:"time"`
+	Timeout           time.Duration         `json:"timeout"`
+	Randoms           []string              `json:"randoms"`
+	Keypair           *keypair              `json:"keypair"`
+	SymmetricKey      *SymmetricKey         `json:"symmetricKey"`
+	Cert              string                `json:"cert"`
+	CertChain         []string              `json:"certChain"`
+	HandshakeMsgs     map[int]Handshake     `json:"handshakeMsgs"`
+	Logs              []string              `json:"logs"`
 }
 
 const (
@@ -49,6 +50,6 @@ func IfClientRequiredCert() bool {
 
 func ClientInitTlsConfig() {
 	config := &TlsConfig{}
-	config.isClient = true
+	config.IsClient = true
 	//config.handshakeState =
 }

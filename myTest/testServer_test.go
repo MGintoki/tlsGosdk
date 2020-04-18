@@ -1,6 +1,7 @@
 package myTest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -55,6 +56,12 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleResponseHandshake(w http.ResponseWriter, r *http.Request) {
+	var clientHs Handshake
+	err := json.NewDecoder(r.Body).Decode(&clientHs)
+	if err != nil {
+		fmt.Println("err")
+	}
+
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ch := &ClientHello{
 		IsClientEncryptRequired: true,
@@ -63,6 +70,7 @@ func handleResponseHandshake(w http.ResponseWriter, r *http.Request) {
 	hs := &Handshake{
 		Version:       "version",
 		HandshakeType: 1,
+		SendTime:      time.Time{},
 	}
 	hs.ClientHello = ch
 	hsMarshal, err := json.Marshal(hs)
@@ -115,19 +123,37 @@ func TestClient(t *testing.T) {
 }
 
 func TestHandshakeRequest(t *testing.T) {
+	sendHs := Handshake{
+		Version:       "test",
+		HandshakeType: 0,
+		ActionCode:    0,
+		SessionId:     "",
+		SendTime:      time.Time{},
+		ClientHello:   nil,
+	}
+	sendHsByte, err := json.Marshal(sendHs)
+	if err != nil {
+		fmt.Println(err)
+	}
 	url := REQUEST_URL + "/handshake"
 	client := http.Client{}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("POST", url, bytes.NewReader(sendHsByte))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	if err != nil {
 		log.Fatal(err)
 	}
 	response, err := client.Do(request)
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	var hs Handshake
+	//var hsMap map[string]interface{}
+	err = json.NewDecoder(response.Body).Decode(&hs)
+	//err = json.NewDecoder(response.Body).Decode(&hsMap)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s", body)
+	fmt.Println(hs)
+	//fmt.Println(hsMap)
 }
 
 func TestClientHelloWorldGet(t *testing.T) {

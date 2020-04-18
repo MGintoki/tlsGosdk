@@ -12,8 +12,8 @@ func TestStateMachine(t *testing.T) {
 
 	fmt.Println(cs)
 	fmt.Println(cs_rsa)
-	cs.cipherSuiteInterface = cs_rsa
-	fmt.Println(cs.cipherSuiteInterface.CipherSuiteKey())
+	cs.CipherSuiteInterface = cs_rsa
+	fmt.Println(cs.CipherSuiteInterface.CipherSuiteKey())
 	//cs.cipherSuiteInterface = cs_rsa
 }
 

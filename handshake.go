@@ -1,6 +1,8 @@
 package gosdk
 
-import "time"
+import (
+	"time"
+)
 
 type Handshake struct {
 	Version       string    `json:"version"`
@@ -64,51 +66,52 @@ type StateMachineInterface interface {
 
 //客户端与服务端定义状态码
 const (
-	CLIENT_INIT_STATE            = 1000 //客户端已初始化tls连接
-	CLIENT_SENT_CLIENT_HELLO     = 1001 //客户端已发送client hello
-	CLIENT_RECEIVED_SERVER_HELLO = 1002 // 客户端已接受到server hello
-	CLIENT_SENT_KEY_EXCHANGE     = 1003 //客户端已发送通信密钥
-	CLIENT_NO_ENCRYPT_CONNECTION = 1004 //客户端已建立非加密连接
-	CLIENT_ENCRYPTED_CONNECTION  = 1005 //客户端已建立加密连接
-	CLIENT_FINISHED              = 1006 //客户端已关闭tls连接
+	CLIENT_INIT_STATE                  = 1000 //客户端已初始化tls连接
+	CLIENT_SENT_CLIENT_HELLO_STATE     = 1001 //客户端已发送client hello
+	CLIENT_RECEIVED_SERVER_HELLO_STATE = 1002 // 客户端已接受到server hello
+	CLIENT_SENT_KEY_EXCHANGE_STATE     = 1003 //客户端已发送通信密钥
+	CLIENT_NO_ENCRYPT_CONNECTION_STATE = 1004 //客户端已建立非加密连接
+	CLIENT_ENCRYPTED_CONNECTION_STATE  = 1005 //客户端已建立加密连接
+	CLIENT_FINISHED_STATE              = 1006 //客户端已关闭tls连接
 
-	SERVER_INIT_STATE                  = 2000 //服务端已初始化tls连接
-	SERVER_RECEIVED_CLIENT_HELLO       = 2001 //服务端已接受client hello
-	SERVER_SENT_SERVER_HELLO           = 2002 //服务端已发送server hello
-	SERVER_RECEIVE_CLIENT_KEY_EXCHANGE = 2003 //服务端已接受到通信密钥
-	SERVER_SENT_FINISHED               = 2004 //服务端已发送开启加密通信
-	SERVER_NO_ENCRYPT_CONNECTION       = 2005 //服务端已建立非加密连接
-	SERVER_ENCRYPTED_CONNECTION        = 2006 //服务端已建立加密连接
-	SERVER_FINISHED                    = 2007 //服务端已关闭tls连接
+	SERVER_INIT_STATE                        = 2000 //服务端已初始化tls连接
+	SERVER_RECEIVED_CLIENT_HELLO_STATE       = 2001 //服务端已接受client hello
+	SERVER_SENT_SERVER_HELLO_STATE           = 2002 //服务端已发送server hello
+	SERVER_RECEIVE_CLIENT_KEY_EXCHANGE_STATE = 2003 //服务端已接受到通信密钥
+	SERVER_SENT_FINISHED_STATE               = 2004 //服务端已发送开启加密通信
+	SERVER_NO_ENCRYPT_CONNECTION_STATE       = 2005 //服务端已建立非加密连接
+	SERVER_ENCRYPTED_CONNECTION_STATE        = 2006 //服务端已建立加密连接
+	SERVER_FINISHED_STATE                    = 2007 //服务端已关闭tls连接
+
 )
 
 //定义handshakeCode 一个handshake或是一个alert 视作一个handshake
 const (
 	//每种握手消息都会有一个code，客户端或服务端接收到一个握手消息，根据code可能引起状态的转变
-	CLIENT_HELLO_CODE        = 101
-	CLIENT_KEY_EXCHANGE_CODE = 102
-	CLIENT_CLOSE_NOTIFY_CODE = 103
+	CLIENT_HELLO_CODE        = 10
+	CLIENT_KEY_EXCHANGE_CODE = 11
+	CLIENT_CLOSE_NOTIFY_CODE = 12
 
-	SERVER_HELLO_CODE    = 201
-	SERVER_FINISHED_CODE = 202
+	SERVER_HELLO_CODE    = 20
+	SERVER_FINISHED_CODE = 21
 
-	APP_DATA_CODE = 300
+	APP_DATA_CODE = 30
 
-	ALERT_1_CODE = 401
+	ALERT_1_CODE = 40
 	//下面是预留的alert 的code
-
 	//下面是非握手消息的actionCode
 	SEND_CLIENT_HELLO_CODE = 501
 )
 
 //定义路由
-var RouteMap map[int]string = map[int]string{
-	SEND_CLIENT_HELLO_CODE: "/handClientHello",
-}
+//var RouteMap map[int]string = map[int]string{
+//	CLIENT_HELLO_CODE: "/handleClientHello",
+//}
 
 const REQUEST_URL = "http://127.0.0.1:8081"
 const LISTEN_URL = "localhost:8081"
+const LISTEN_TLS = "/handleTLS"
 
-func GetHSRequestRoute(actionCode int) string {
-	return REQUEST_URL + RouteMap[actionCode]
+func GetHSRequestRoute() string {
+	return REQUEST_URL + LISTEN_TLS
 }

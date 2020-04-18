@@ -1,11 +1,13 @@
 package gosdk
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/pretty66/gosdk/cipherSuites"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -57,13 +59,13 @@ func TestClientStartTLS(t *testing.T) {
 		State:          TLS_STATE_ACTIVING,
 		CipherSuites:   []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
 		CipherSuite:    cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"],
-		Time:           nil,
-		Timeout:        nil,
+		Time:           time.Time{},
+		Timeout:        TIMEOUT,
 		Randoms:        nil,
 		Keypair:        nil,
 		SymmetricKey:   nil,
-		Cert:           nil,
-		CertChain:      nil,
+		Cert:           "",
+		CertChain:      []string{},
 		HandshakeMsgs:  hsmap,
 		Logs:           nil,
 	}
@@ -71,28 +73,15 @@ func TestClientStartTLS(t *testing.T) {
 	client.tlsConfig = clientTlsConfig
 	fmt.Println("client tls config ok")
 	fmt.Println("handshake state -> client_init")
-	//生成client hello
-	clientHello := &ClientHello{
-		IsClientEncryptRequired: true,
-		IsCertRequired:          true,
-		CipherSuites:            []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
-	}
-	chHandshake := &Handshake{
-		Version:           "",
-		HandshakeType:     0,
-		ActionCode:        CLIENT_HELLO_CODE,
-		SessionId:         "",
-		SendTime:          time.Time{},
-		ClientHello:       clientHello,
-		ServerHello:       nil,
-		ClientKeyExchange: nil,
-		ServerFinished:    nil,
-		AppData:           nil,
-		Alert:             nil,
-	}
+
 	//发送client hello
-	client.tlsConfig.HandshakeState.handleAction(clientTlsConfig, chHandshake, SEND_CLIENT_HELLO_CODE)
-	fmt.Println("send client hello")
+	out, err := client.tlsConfig.HandshakeState.handleAction(clientTlsConfig, nil, CLIENT_HELLO_CODE)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("send client hello success")
+	fmt.Println(out.ServerHello.Cert)
+	fmt.Println(out)
 }
 
 func TestServerStartTLS(t *testing.T) {
@@ -103,23 +92,24 @@ func TestServerStartTLS(t *testing.T) {
 	}
 	hsmap := map[int]Handshake{}
 	serverTlsConfig := &TlsConfig{
-		SessionId:      "",
-		IsClient:       false,
-		HandshakeState: &ServerInitState{},
-		IsCertRequired: false,
-		ServerName:     "testServerName",
-		State:          TLS_STATE_ACTIVING,
-		CipherSuites:   []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
-		CipherSuite:    cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"],
-		Time:           nil,
-		Timeout:        nil,
-		Randoms:        nil,
-		Keypair: keypair{
+		SessionId:         "",
+		IsClient:          false,
+		HandshakeState:    &ServerInitState{},
+		IsEncryptRequired: true,
+		IsCertRequired:    false,
+		ServerName:        "testServerName",
+		State:             TLS_STATE_ACTIVING,
+		CipherSuites:      []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
+		CipherSuite:       cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"],
+		Time:              time.Time{},
+		Timeout:           TIMEOUT,
+		Randoms:           nil,
+		Keypair: &keypair{
 			PrivateKey:  PRIVATE_KEY,
 			PublicKey:   PUBLIC_KEY,
 			KeypairType: "rsa",
 		},
-		SymmetricKey:  SymmetricKey{},
+		SymmetricKey:  &SymmetricKey{},
 		Cert:          CERT,
 		CertChain:     nil,
 		HandshakeMsgs: hsmap,
@@ -127,15 +117,42 @@ func TestServerStartTLS(t *testing.T) {
 	}
 	server.tlsConfig = serverTlsConfig
 	fmt.Println("server tls config ok")
-	//监听请求
-	for server.tlsConfig.HandshakeState.currentState() == SERVER_INIT_STATE {
-		//测试的client hello
-		clientHello := &ClientHello{
-			IsClientEncryptRequired: true,
-			IsCertRequired:          true,
-			CipherSuites:            []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
-		}
-		fmt.Println(clientHello)
-		server.tlsConfig.HandshakeState.handleAction(server.tlsConfig, nil, CLIENT_HELLO_CODE)
+
+	http.HandleFunc(LISTEN_TLS, server.handleTLS)
+	http.ListenAndServe(LISTEN_URL, nil)
+
+}
+func (c *TlsServer) handleTLS(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("receive handshake")
+	var hs Handshake
+	err := json.NewDecoder(r.Body).Decode(&hs)
+	if err != nil {
+		fmt.Println(err)
 	}
+	fmt.Println("receive handshake")
+	out, err := c.tlsConfig.HandshakeState.handleAction(c.tlsConfig, &hs, hs.ActionCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	outByte, err := json.Marshal(out)
+	w.Write(outByte)
+	fmt.Println("响应成功" + strconv.Itoa(out.ActionCode))
+
+	//w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	//ch := &ClientHello{
+	//	IsClientEncryptRequired: true,
+	//	IsCertRequired:          false,
+	//}
+	//hs := &Handshake{
+	//	Version:       "version",
+	//	HandshakeType: 1,
+	//	SendTime:      time.Time{},
+	//}
+	//hs.ClientHello = ch
+	//hsMarshal, err := json.Marshal(hs)
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//w.Write(hsMarshal)
 }
