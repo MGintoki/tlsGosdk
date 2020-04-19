@@ -15,7 +15,7 @@ type Cert struct {
 	NotAfter  time.Time `json:"notAfter"`
 }
 
-func VerifyCert(cert string, certChain []string, publicKey string) bool {
+func VerifyCert(cert string, certChain []string, publicKey []byte) bool {
 
 	return true
 }

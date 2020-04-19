@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pretty66/gosdk/errno"
-	"log"
 	"net/http"
 	"time"
 )
@@ -58,7 +57,10 @@ func (c *ClientInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 		fmt.Println("client hello handshake init ")
 		out, err = SendHandshake(clientHelloHandshake)
 		fmt.Println("client hello sent")
-		tlsConfig.HandshakeState = &ClientSentClientHello{}
+		if err != nil {
+			return out, err
+		}
+		tlsConfig.HandshakeState = &ClientSentClientHelloState{}
 		tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE] = *clientHelloHandshake
 		return out, err
 
@@ -69,14 +71,14 @@ func (c *ClientInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 	return
 }
 
-type ClientSentClientHello struct {
+type ClientSentClientHelloState struct {
 }
 
-func (c *ClientSentClientHello) currentState() int {
+func (c *ClientSentClientHelloState) currentState() int {
 	return CLIENT_SENT_CLIENT_HELLO_STATE
 }
 
-func (c *ClientSentClientHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ClientSentClientHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch handshake.ActionCode {
 	case SERVER_HELLO_CODE:
 
@@ -84,14 +86,14 @@ func (c *ClientSentClientHello) handleAction(tlsConfig *TlsConfig, handshake *Ha
 	return
 }
 
-type ClientReceivedServerHello struct {
+type ClientReceivedServerHelloState struct {
 }
 
-func (c *ClientReceivedServerHello) currentState() int {
+func (c *ClientReceivedServerHelloState) currentState() int {
 	return CLIENT_RECEIVED_SERVER_HELLO_STATE
 }
 
-func (c *ClientReceivedServerHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case SERVER_HELLO_CODE:
 		if !VerifyCert(handshake.ServerHello.Cert, handshake.ServerHello.CertVerifyChain, handshake.ServerHello.PublicKey) {
@@ -103,10 +105,20 @@ func (c *ClientReceivedServerHello) handleAction(tlsConfig *TlsConfig, handshake
 			tlsConfig.Cert = handshake.ServerHello.Cert
 			tlsConfig.CertChain = handshake.ServerHello.CertVerifyChain
 		}
+		//创建通信密钥
 		symmetricKey := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateSymmetricKey(tlsConfig.Randoms)
 		tlsConfig.SymmetricKey = symmetricKey
+		//使用公钥加密通信密钥
+		symmetricKeyByte, err := json.Marshal(tlsConfig.SymmetricKey)
+		if err != nil {
+			return out, errno.JSON_ERROR.Add("SymmetricKey Marshal error")
+		}
+		encryptedSymmetricKey, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.AsymmetricKeyEncrypt(symmetricKeyByte, tlsConfig.Keypair.PublicKey)
+		if err != nil {
+			return out, errno.ASYMMETRIC_ENCRYPT_ERROR
+		}
 		clientKeyExchange := ClientKeyExchange{
-			SymmetricKey: *symmetricKey,
+			SymmetricKey: string(encryptedSymmetricKey),
 			MAC:          "",
 		}
 		clientKeyExchangeHandshake := &Handshake{
@@ -117,37 +129,59 @@ func (c *ClientReceivedServerHello) handleAction(tlsConfig *TlsConfig, handshake
 			SendTime:          time.Time{},
 			ClientKeyExchange: &clientKeyExchange,
 		}
+		tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE] = *clientKeyExchangeHandshake
 		//留待生成MAC摘要，填入clientKeyExchange中
-
+		MAC, err := CreateNegotiateMAC(tlsConfig)
+		if err != nil {
+			return out, errno.CREATE_MAC_ERROR.Add("Client Create MAC Error")
+		}
+		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MAC
 		fmt.Println("generate client key exchange")
 		out, err := SendHandshake(clientKeyExchangeHandshake)
+		fmt.Println("sent client key exchange")
+		tlsConfig.HandshakeState = &ClientSentKeyExchangeState{}
 		if err != nil {
-			log.Fatal(out)
+			return out, err
 		}
-		tlsConfig.HandshakeState = &ClientSentKeyExchange{}
+		fmt.Println("received server ")
+		tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
 		return out, err
 	}
 	return
 }
 
-type ClientSentKeyExchange struct {
+type ClientSentKeyExchangeState struct {
 }
 
-func (c *ClientSentKeyExchange) currentState() int {
-	return CLIENT_SENT_CLIENT_HELLO_STATE
+func (c *ClientSentKeyExchangeState) currentState() int {
+	return CLIENT_SENT_KEY_EXCHANGE_STATE
 }
 
-func (c *ClientSentKeyExchange) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ClientSentKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }
 
-type ClientNoEncryptConnection struct {
+type ClientNoEncryptConnectionState struct {
 }
 
-func (c *ClientNoEncryptConnection) currentState() int {
+func (c *ClientNoEncryptConnectionState) currentState() int {
+	return CLIENT_NO_ENCRYPT_CONNECTION_STATE
+}
+
+func (c *ClientNoEncryptConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }
 
-func (c *ClientNoEncryptConnection) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+type ClientEncryptedConnectionState struct {
+}
+
+func (c *ClientEncryptedConnectionState) currentState() int {
+	return CLIENT_ENCRYPTED_CONNECTION_STATE
+}
+
+func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	switch actionCode {
+
+	}
+	return
 }

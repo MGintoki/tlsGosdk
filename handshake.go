@@ -29,14 +29,14 @@ type ClientHello struct {
 type ServerHello struct {
 	IsServerEncryptRequired bool     `json:"isServerEncryptRequired"`
 	CipherSuite             int      `json:"cipherSuite"`
-	PublicKey               string   `json:"publicKey"`
+	PublicKey               []byte   `json:"publicKey"`
 	Cert                    string   `json:"cert"`            //服务端TLS证书
 	CertVerifyChain         []string `json:"certVerifyChain"` //服务端TLS证书验证链
 }
 
 type ClientKeyExchange struct {
-	SymmetricKey SymmetricKey `json:"symmetricKey"`
-	MAC          string       `json:"MAC"`
+	SymmetricKey string `json:"symmetricKey"`
+	MAC          string `json:"MAC"`
 }
 
 type ServerFinished struct {

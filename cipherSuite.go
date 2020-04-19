@@ -1,6 +1,10 @@
 package gosdk
 
-import "github.com/pretty66/gosdk/cipherSuites"
+import (
+	"encoding/json"
+	"github.com/pretty66/gosdk/cipherSuites"
+	"github.com/pretty66/gosdk/errno"
+)
 
 //将接口嵌套到结构体中，方便以后结构体的拓展
 type CipherSuite struct {
@@ -33,8 +37,37 @@ func NewCipherSuiteModel(cipherSuitCode int) *CipherSuite {
 	return _cipherSuite
 }
 
-func CreateNegotiateMAC(tlsConfig *TlsConfig) string {
-	return ""
+//返回对称密钥加密的MAC
+func CreateNegotiateMAC(tlsConfig *TlsConfig) (MAC string, err error) {
+	cs := NewCipherSuiteModel(tlsConfig.CipherSuite)
+	//将来需要加一个检测 检测handshakeMsgs中是否含有三个消息
+	tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = ""
+	chByte, err := json.Marshal(tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE].ClientHello)
+	if err != nil {
+		return MAC, errno.JSON_ERROR.Add("Client Hello Marshal error")
+	}
+	chMAC := cs.CipherSuiteInterface.CreateMAC(chByte)
+	shByte, err := json.Marshal(tlsConfig.HandshakeMsgs[SERVER_RECEIVED_CLIENT_HELLO_STATE].ServerHello)
+	if err != nil {
+		return MAC, errno.JSON_ERROR.Add("Server Hello Marshal error")
+	}
+	shMAC := cs.CipherSuiteInterface.CreateMAC(shByte)
+	ckeByte, err := json.Marshal(tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange)
+	if err != nil {
+		return MAC, errno.JSON_ERROR.Add("Client Key Exchange Marshal error")
+	}
+	ckeMAC := cs.CipherSuiteInterface.CreateMAC(ckeByte)
+	var totalMAC []byte
+	totalMAC = append(totalMAC, chMAC...)
+	totalMAC = append(totalMAC, shMAC...)
+	totalMAC = append(totalMAC, ckeMAC...)
+	MACByte, err := cs.CipherSuiteInterface.SymmetricKeyEncrypt(totalMAC, tlsConfig.SymmetricKey.Key)
+	if err != nil {
+		return MAC, err
+	}
+	MAC = string(MACByte)
+
+	return
 }
 
 func CreateAppDataMAC(data map[string]interface{}) string {

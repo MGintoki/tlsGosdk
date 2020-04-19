@@ -4,8 +4,8 @@ import "time"
 
 type keypair struct {
 	SessionId   string    `json:"sessionId"`
-	PrivateKey  string    `json:"privateKey"`
-	PublicKey   string    `json:"publicKey"`
-	KeypairType string    `json:"keypairType"`
+	PrivateKey  []byte    `json:"privateKey"`
+	PublicKey   []byte    `json:"publicKey"`
+	KeypairType int       `json:"keypairType"`
 	CreateAt    time.Time `json:"createAt"`
 }

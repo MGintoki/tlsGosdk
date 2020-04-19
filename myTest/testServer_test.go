@@ -202,8 +202,8 @@ type ClientHello struct {
 	CipherSuites            []int `json:"cipherSuites"`
 }
 type people struct {
-	name string
-	age  int
+	Name string `json:"name"`
+	Age  int    `json:"age"`
 }
 
 func TestMarshal(t *testing.T) {
@@ -232,8 +232,8 @@ func TestMarshal(t *testing.T) {
 	}
 	fmt.Println(string(chMarshal))
 	p := &people{
-		name: "张三",
-		age:  22,
+		Name: "张三",
+		Age:  22,
 	}
 	pMarshal, err := json.Marshal(p)
 	fmt.Println(pMarshal)

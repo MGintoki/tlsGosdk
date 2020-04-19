@@ -1,7 +1,9 @@
 package gosdk
 
 import (
+	"encoding/json"
 	"github.com/pretty66/gosdk/cipherSuites"
+	"github.com/pretty66/gosdk/errno"
 	"time"
 )
 
@@ -42,6 +44,9 @@ func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 					SendTime:      time.Time{},
 					ServerHello:   serverHello,
 				}
+				//将server hello 放入handshake msgs 中，用以生成MAC
+				tlsConfig.HandshakeMsgs[SERVER_HELLO_CODE] = *serverHelloHandshake
+				tlsConfig.HandshakeState = &ServerSentServerHelloState{}
 				return serverHelloHandshake, err
 				//不需要开启加密通信
 			} else {
@@ -56,39 +61,60 @@ func negotiateCipherSuite(clientCipherSuites, serverCipherSuites []int) int {
 	return cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]
 }
 
-type ServerReceivedClientHello struct {
+type ServerReceivedClientHelloState struct {
 }
 
-func (c *ServerReceivedClientHello) currentState() int {
+func (c *ServerReceivedClientHelloState) currentState() int {
 	return SERVER_RECEIVED_CLIENT_HELLO_STATE
 }
 
-func (c *ServerReceivedClientHello) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ServerReceivedClientHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }
 
-type ServerSendServerHelloState struct {
+type ServerSentServerHelloState struct {
 }
 
-func (s ServerSendServerHelloState) currentState() int {
+func (s ServerSentServerHelloState) currentState() int {
 	return SERVER_SENT_SERVER_HELLO_STATE
 }
 
-func (s ServerSendServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (s ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case CLIENT_KEY_EXCHANGE_CODE:
 		tlsConfig.SessionId = handshake.SessionId
+		symmetricKeyStr := handshake.ClientKeyExchange.SymmetricKey
+		symmetricKeyByte := []byte(symmetricKeyStr)
+		symmetricKey := &SymmetricKey{}
+		err := json.Unmarshal(symmetricKeyByte, symmetricKey)
+		if err != nil {
+			return out, errno.JSON_ERROR.Add("SymmetricKey Unmarshal error")
+		}
+		tlsConfig.SymmetricKey = symmetricKey
+		clientMAC := handshake.ClientKeyExchange.MAC
+		//将client key exchange 保存到server tlsConfig中
+		//client CreateMAC时，client key exchange的MAC是空的，所以服务端这里生成时也要置MAC为空
+		tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE] = *handshake
+		tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = ""
+		serverMAC, err := CreateNegotiateMAC(tlsConfig)
+		if clientMAC != serverMAC {
+			return out, errno.MAC_VERIFY_ERROR.Add("Server Verify MAC Error" + err.Error())
+		}
+		if err != nil {
+			return out, errno.CREATE_MAC_ERROR.Add("Server Create MAC Error")
+		}
 
 	}
+	return
 }
 
-type ServerReceivedClientKeyExchange struct {
+type ServerReceivedClientKeyExchangeState struct {
 }
 
-func (s ServerReceivedClientKeyExchange) currentState() int {
+func (s ServerReceivedClientKeyExchangeState) currentState() int {
 	return SERVER_RECEIVE_CLIENT_KEY_EXCHANGE_STATE
 }
 
-func (s ServerReceivedClientKeyExchange) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (s ServerReceivedClientKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }
