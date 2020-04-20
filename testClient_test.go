@@ -92,6 +92,16 @@ func TestClientStartTLS(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if out.ActionCode == SERVER_FINISHED_CODE && client.tlsConfig.IsEncryptRequired {
+		client.tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
+	}
+	out, err = client.tlsConfig.HandshakeState.handleAction(client.tlsConfig, out, out.ActionCode)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(out)
+
+	//
 }
 
 func TestServerStartTLS(t *testing.T) {

@@ -70,13 +70,14 @@ type StateMachineInterface interface {
 
 //客户端与服务端定义状态码
 const (
-	CLIENT_INIT_STATE                  = 1000 //客户端已初始化tls连接
-	CLIENT_SENT_CLIENT_HELLO_STATE     = 1001 //客户端已发送client hello
-	CLIENT_RECEIVED_SERVER_HELLO_STATE = 1002 // 客户端已接受到server hello
-	CLIENT_SENT_KEY_EXCHANGE_STATE     = 1003 //客户端已发送通信密钥
-	CLIENT_NO_ENCRYPT_CONNECTION_STATE = 1004 //客户端已建立非加密连接
-	CLIENT_ENCRYPTED_CONNECTION_STATE  = 1005 //客户端已建立加密连接
-	CLIENT_FINISHED_STATE              = 1006 //客户端已关闭tls连接
+	CLIENT_INIT_STATE                     = 1000 //客户端已初始化tls连接
+	CLIENT_SENT_CLIENT_HELLO_STATE        = 1001 //客户端已发送client hello
+	CLIENT_RECEIVED_SERVER_HELLO_STATE    = 1002 // 客户端已接受到server hello
+	CLIENT_SENT_KEY_EXCHANGE_STATE        = 1003 //客户端已发送通信密钥
+	CLIENT_RECEIVED_SERVER_FINISHED_STATE = 1004 //客户度啊接收到server finished
+	CLIENT_NO_ENCRYPT_CONNECTION_STATE    = 1005 //客户端已建立非加密连接
+	CLIENT_ENCRYPTED_CONNECTION_STATE     = 1006 //客户端已建立加密连接
+	CLIENT_FINISHED_STATE                 = 1007 //客户端已关闭tls连接
 
 	SERVER_INIT_STATE                        = 2000 //服务端已初始化tls连接
 	SERVER_RECEIVED_CLIENT_HELLO_STATE       = 2001 //服务端已接受client hello

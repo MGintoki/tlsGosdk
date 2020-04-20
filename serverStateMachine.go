@@ -43,7 +43,7 @@ func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 					Version:       "",
 					HandshakeType: 0,
 					ActionCode:    SERVER_HELLO_CODE,
-					SessionId:     CreateSessionId(),
+					SessionId:     cipherSuites.CreateSessionId(),
 					SendTime:      time.Time{},
 					ServerHello:   serverHello,
 				}
@@ -80,11 +80,11 @@ func (c *ServerReceivedClientHelloState) handleAction(tlsConfig *TlsConfig, hand
 type ServerSentServerHelloState struct {
 }
 
-func (s ServerSentServerHelloState) currentState() int {
+func (c *ServerSentServerHelloState) currentState() int {
 	return SERVER_SENT_SERVER_HELLO_STATE
 }
 
-func (s ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case CLIENT_KEY_EXCHANGE_CODE:
 		tlsConfig.SessionId = handshake.SessionId
@@ -137,6 +137,8 @@ func (s ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake
 			ServerFinished: serverFinished,
 		}
 		fmt.Println("create server finished")
+		tlsConfig.HandshakeState = &ServerSentFinishedState{}
+		//tlsConfig.HandshakeState = &
 		return serverFinishedHandshake, err
 
 	}
@@ -146,10 +148,32 @@ func (s ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake
 type ServerReceivedClientKeyExchangeState struct {
 }
 
-func (s ServerReceivedClientKeyExchangeState) currentState() int {
+func (c *ServerReceivedClientKeyExchangeState) currentState() int {
 	return SERVER_RECEIVE_CLIENT_KEY_EXCHANGE_STATE
 }
 
-func (s ServerReceivedClientKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+func (c *ServerReceivedClientKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	panic("implement me")
+}
+
+type ServerSentFinishedState struct {
+}
+
+func (c *ServerSentFinishedState) currentState() int {
+	return SERVER_SENT_FINISHED_STATE
+}
+
+func (c *ServerSentFinishedState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	panic("implement me")
+}
+
+type ServerEncryptedConnectionState struct {
+}
+
+func (c *ServerEncryptedConnectionState) currentState() int {
+	return SERVER_ENCRYPTED_CONNECTION_STATE
+}
+
+func (c *ServerEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
 }

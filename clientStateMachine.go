@@ -96,7 +96,11 @@ func (c *ClientReceivedServerHelloState) currentState() int {
 func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case SERVER_HELLO_CODE:
-		if !VerifyCert(handshake.ServerHello.Cert, handshake.ServerHello.CertVerifyChain, handshake.ServerHello.PublicKey) {
+		flag, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.VerifyCert(handshake.ServerHello.Cert, handshake.ServerHello.CertVerifyChain, handshake.ServerHello.PublicKey)
+		if err != nil {
+
+		}
+		if !flag {
 			return out, errno.CERT_VERIFY_ERROR
 		}
 		tlsConfig.CipherSuite = handshake.ServerHello.CipherSuite
@@ -109,7 +113,7 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		}
 		tlsConfig.SessionId = handshake.SessionId
 		//将来会有从本地获取部署指定路径的证书以及公钥
-		symmetricKey := CreateSymmetricKey(handshake.ServerHello.CipherSuite, tlsConfig.Randoms)
+		symmetricKey := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateSymmetricKey(tlsConfig.Randoms)
 		tlsConfig.SymmetricKey = symmetricKey
 		//使用公钥加密通信密钥
 		symmetricKeyByte, err := json.Marshal(tlsConfig.SymmetricKey)
@@ -151,7 +155,7 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 			return out, err
 		}
 		fmt.Println("received server Finished")
-		tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
+		tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
 		return out, err
 	}
 	return
@@ -166,6 +170,21 @@ func (c *ClientSentKeyExchangeState) currentState() int {
 
 func (c *ClientSentKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	panic("implement me")
+}
+
+type ClientReceivedServerFinishedState struct {
+}
+
+func (c *ClientReceivedServerFinishedState) currentState() int {
+	return CLIENT_RECEIVED_SERVER_FINISHED_STATE
+}
+
+func (c *ClientReceivedServerFinishedState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	switch actionCode {
+	case SERVER_FINISHED_CODE:
+		tlsConfig.HandshakeState = &ClientEncryptedConnectionState{}
+	}
+	return
 }
 
 type ClientNoEncryptConnectionState struct {
@@ -187,8 +206,6 @@ func (c *ClientEncryptedConnectionState) currentState() int {
 }
 
 func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	switch actionCode {
 
-	}
 	return
 }

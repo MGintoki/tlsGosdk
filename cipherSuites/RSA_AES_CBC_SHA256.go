@@ -44,7 +44,12 @@ type sss_s struct {
 }
 
 func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (key []byte) {
-	return
+	return GetRandom(KEY_LENGTH)
+}
+
+func (c *RSA_AES_CBC_SHA256) VerifyCert(cert []byte, certChain [][]byte, publicKey []byte) (out bool, err error) {
+
+	return true, err
 }
 
 func (c *RSA_AES_CBC_SHA256) AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error) {

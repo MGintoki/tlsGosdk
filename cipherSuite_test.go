@@ -1,10 +1,13 @@
 package gosdk
 
 import (
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/wumansgy/goEncrypt"
+	"log"
 	"reflect"
 	"testing"
 	"time"
@@ -249,3 +252,88 @@ func TestIn(t *testing.T) {
 	fmt.Println(reflect.TypeOf(animal.animal))
 	fmt.Println(animal.animal.run())
 }
+
+func TestCertVerify(t *testing.T) {
+	certByte := []byte(TEST_CERT)
+	p, _ := pem.Decode(certByte)
+	cert, err := x509.ParseCertificate(p.Bytes)
+	if err != nil {
+
+	}
+	caCertByte := []byte(RCA_CERT)
+	p2, _ := pem.Decode(caCertByte)
+	caCert, err := x509.ParseCertificate(p2.Bytes)
+	err = cert.CheckSignatureFrom(caCert)
+	if err != nil {
+
+	}
+
+}
+
+func TestCertChain(t *testing.T) {
+	block, _ := pem.Decode([]byte(TEST_CERT))
+	if block == nil {
+
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	roots := x509.NewCertPool()
+
+	ok := roots.AppendCertsFromPEM([]byte(RCA_CERT))
+	if !ok {
+		log.Fatalf("failed to parse roots certificate")
+	}
+
+	opts := x509.VerifyOptions{
+		Roots: roots,
+	}
+
+	chains, err := cert.Verify(opts)
+	if err != nil {
+
+	}
+	for i, chain := range chains {
+		for _, certificate := range chain {
+			log.Printf("Chain=%d Subject=%s", i, certificate.Subject)
+		}
+	}
+	fmt.Println(chains)
+}
+
+const RCA_CERT = `-----BEGIN CERTIFICATE-----
+MIICczCCAhmgAwIBAgIQfB3263XfD17WG0c32jq73jAKBggqhkjOPQQDAjCBgzEL
+MAkGA1UEBhMCY24xEDAOBgNVBAgTB2ppYW5nc3UxEDAOBgNVBAcTB25hbmppbmcx
+FDASBgNVBAkTC2d1eWFuZ3Rhc2hhMQ8wDQYDVQQREwYxMjM0NTYxCzAJBgNVBAoT
+AmNpMQswCQYDVQQLEwJjaTEPMA0GA1UEAxMGY2kuY29tMB4XDTIwMDQxNTEwMDEw
+MFoXDTMwMDQxMzEwMDEwMFowgYMxCzAJBgNVBAYTAmNuMRAwDgYDVQQIEwdqaWFu
+Z3N1MRAwDgYDVQQHEwduYW5qaW5nMRQwEgYDVQQJEwtndXlhbmd0YXNoYTEPMA0G
+A1UEERMGMTIzNDU2MQswCQYDVQQKEwJjaTELMAkGA1UECxMCY2kxDzANBgNVBAMT
+BmNpLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABH/t5L0ZjJIJaChxIlmT
+2Z+qCxqFMBhj6+UCyJ2ShGqX/C5KXiqUZkFeke51TPp6Ekl7XtiHAd0QHmXG0/wn
+FTWjbTBrMA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYB
+BQUHAwEwDwYDVR0TAQH/BAUwAwEB/zApBgNVHQ4EIgQg5dF1eDfmu1hGjJc96Bmm
+gZg/w/JAhnmKS0nSURpxuAMwCgYIKoZIzj0EAwIDSAAwRQIgJU+h99Gt/bJoK86T
+eBs1d8AYvRVJ9Iw5dTkkMyiW130CIQD8BUpe9pim9ap5ne1oUJGxg90KBvMC7QUG
+YrmZ+cYXFQ==
+-----END CERTIFICATE-----`
+const TEST_CERT = `-----BEGIN CERTIFICATE-----
+MIICwzCCAmmgAwIBAgIUVIR1inLmwy3HzhffK9/VbM7Ei20wCgYIKoZIzj0EAwIw
+czELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh
+biBGcmFuY2lzY28xGTAXBgNVBAoTEG9yZzEuZXhhbXBsZS5jb20xHDAaBgNVBAMT
+E2NhLm9yZzEuZXhhbXBsZS5jb20wHhcNMjAwNDEzMTEzMTAwWhcNMjUwNDEyMTEz
+NjAwWjBRMQkwBwYDVQQGEwAxCTAHBgNVBAgTADEJMAcGA1UEBxMAMQkwBwYDVQQK
+EwAxDTALBgNVBAsTBG9yZzExFDASBgNVBAMTC2RpZC1hZGZzZmRmMFkwEwYHKoZI
+zj0CAQYIKoZIzj0DAQcDQgAEI4+mL/Lkx7tjFNzvTFdME9htUdFBMvAtas0wyett
+Cz/jMszPU6iSFuhZI2XjTob2QO4g5nK75z2JffAzADRPS6OB/DCB+TAOBgNVHQ8B
+Af8EBAMCAQYwEgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUQdEqxyouVVP8
+i1efOQ5yLen97KIwKwYDVR0jBCQwIoAg5xmhZslKvW1mYTAezU8dKZP/boqf68a3
+H6pmMF1HhDAwgYYGCCoDBAUGBwgBBHp7ImF0dHJzIjp7ImFjY291bnRJZCI6ImFi
+YyIsImhmLkludGVybWVkaWF0ZUNBIjoidHJ1ZSIsIm9yZ19rZXkiOiJvcmdrZXkx
+Iiwic3ViT3JnS2V5Ijoib3JnMSIsInN1Yl9vcmdfa2V5Ijoic3ViT3JnS2V5MSJ9
+fTAKBggqhkjOPQQDAgNIADBFAiEAmrJ4ZDH+xEGI2WqAsgApsaSxATcjuNOso8G4
+Pl3VuewCICHIKph00oLckO/UuTgowfWlEsqD41Dl0LwjuYASUOjB
+-----END CERTIFICATE-----
+`
