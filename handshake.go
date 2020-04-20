@@ -21,37 +21,40 @@ type Handshake struct {
 }
 
 type ClientHello struct {
-	IsClientEncryptRequired bool  `json:"isClientEncryptRequired"` //是否需要加密
-	IsCertRequired          bool  `json:"isCertRequired"`          //是否需要服务端证书，不需要的话，说明客户端从部署指定路径获取
-	CipherSuites            []int `json:"cipherSuites"`
+	IsClientEncryptRequired bool   `json:"isClientEncryptRequired"` //是否需要加密
+	IsCertRequired          bool   `json:"isCertRequired"`          //是否需要服务端证书，不需要的话，说明客户端从部署指定路径获取
+	CipherSuites            []int  `json:"cipherSuites"`
+	Random                  string `json:"random"`
 }
 
 type ServerHello struct {
 	IsServerEncryptRequired bool     `json:"isServerEncryptRequired"`
 	CipherSuite             int      `json:"cipherSuite"`
 	PublicKey               []byte   `json:"publicKey"`
-	Cert                    string   `json:"cert"`            //服务端TLS证书
-	CertVerifyChain         []string `json:"certVerifyChain"` //服务端TLS证书验证链
+	Cert                    []byte   `json:"cert"`            //服务端TLS证书
+	CertVerifyChain         [][]byte `json:"certVerifyChain"` //服务端TLS证书验证链
+	Random                  string   `json:"random"`
 }
 
 type ClientKeyExchange struct {
-	SymmetricKey string `json:"symmetricKey"`
-	MAC          string `json:"MAC"`
+	SymmetricKey []byte `json:"symmetricKey"`
+	Random       string `json:"random"`
+	MAC          []byte `json:"MAC"`
 }
 
 type ServerFinished struct {
 	SessionId string `json:"sessionId"`
-	MAC       string `json:"MAC"`
+	MAC       []byte `json:"MAC"`
 }
 
 type AppData struct {
 	Data map[string]interface{} `json:"data"`
-	MAC  string                 `json:"MAC"`
+	MAC  []byte                 `json:"MAC"`
 }
 
 type Alert struct {
 	Alert string `json:"alert"`
-	Msg   string `json:"msg"`
+	Msg   []byte `json:"msg"`
 }
 
 type StateMachine struct {
@@ -111,7 +114,7 @@ const (
 
 const REQUEST_URL = "http://127.0.0.1:8081"
 const LISTEN_URL = "localhost:8081"
-const LISTEN_TLS = "/handleTLS"
+const LISTEN_TLS = "/handleTLS/"
 
 func GetHSRequestRoute() string {
 	return REQUEST_URL + LISTEN_TLS

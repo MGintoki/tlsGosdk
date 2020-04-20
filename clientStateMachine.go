@@ -100,42 +100,49 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 			return out, errno.CERT_VERIFY_ERROR
 		}
 		tlsConfig.CipherSuite = handshake.ServerHello.CipherSuite
-		//如果客户端不能直接获取服务端的证书和公钥，使用server hello 里的证书
+		//如果客户端不能直接获取服务端的证书和公钥，使用server hello 里的证书以及公钥
+
 		if tlsConfig.IsCertRequired {
 			tlsConfig.Cert = handshake.ServerHello.Cert
 			tlsConfig.CertChain = handshake.ServerHello.CertVerifyChain
+			tlsConfig.PublicKey = handshake.ServerHello.PublicKey
 		}
-		//创建通信密钥
-		symmetricKey := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateSymmetricKey(tlsConfig.Randoms)
+		tlsConfig.SessionId = handshake.SessionId
+		//将来会有从本地获取部署指定路径的证书以及公钥
+		symmetricKey := CreateSymmetricKey(handshake.ServerHello.CipherSuite, tlsConfig.Randoms)
 		tlsConfig.SymmetricKey = symmetricKey
 		//使用公钥加密通信密钥
 		symmetricKeyByte, err := json.Marshal(tlsConfig.SymmetricKey)
+		////if err != nil {
+		////	return out, errno.JSON_ERROR.Add("SymmetricKey Marshal error")
+		////}
+		encryptedSymmetricKey, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.AsymmetricKeyEncrypt(symmetricKeyByte, tlsConfig.PublicKey)
 		if err != nil {
-			return out, errno.JSON_ERROR.Add("SymmetricKey Marshal error")
+			return out, errno.ASYMMETRIC_ENCRYPT_ERROR.Add(err.Error())
 		}
-		encryptedSymmetricKey, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.AsymmetricKeyEncrypt(symmetricKeyByte, tlsConfig.Keypair.PublicKey)
-		if err != nil {
-			return out, errno.ASYMMETRIC_ENCRYPT_ERROR
-		}
+		//生成handshake
 		clientKeyExchange := ClientKeyExchange{
-			SymmetricKey: string(encryptedSymmetricKey),
-			MAC:          "",
+			//SymmetricKey: encryptedSymmetricKey,
+			SymmetricKey: encryptedSymmetricKey,
+			MAC:          nil,
 		}
 		clientKeyExchangeHandshake := &Handshake{
 			Version:           "",
 			HandshakeType:     0,
 			ActionCode:        CLIENT_KEY_EXCHANGE_CODE,
-			SessionId:         symmetricKey.SessionId,
+			SessionId:         tlsConfig.SessionId,
 			SendTime:          time.Time{},
 			ClientKeyExchange: &clientKeyExchange,
 		}
+		tlsConfig.HandshakeMsgs[SERVER_HELLO_CODE] = *handshake
 		tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE] = *clientKeyExchangeHandshake
-		//留待生成MAC摘要，填入clientKeyExchange中
+		//生成MAC摘要，填入clientKeyExchange中
 		MAC, err := CreateNegotiateMAC(tlsConfig)
+		MACEncrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyEncrypt(MAC, tlsConfig.SymmetricKey)
 		if err != nil {
 			return out, errno.CREATE_MAC_ERROR.Add("Client Create MAC Error")
 		}
-		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MAC
+		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MACEncrypted
 		fmt.Println("generate client key exchange")
 		out, err := SendHandshake(clientKeyExchangeHandshake)
 		fmt.Println("sent client key exchange")
@@ -143,7 +150,7 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		if err != nil {
 			return out, err
 		}
-		fmt.Println("received server ")
+		fmt.Println("received server Finished")
 		tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
 		return out, err
 	}

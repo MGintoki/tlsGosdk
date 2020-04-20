@@ -2,18 +2,17 @@ package gosdk
 
 import (
 	"fmt"
-	"github.com/pretty66/gosdk/cipherSuites"
 	"testing"
 )
 
 func TestStateMachine(t *testing.T) {
-	cs := &CipherSuite{}
-	cs_rsa := cipherSuites.NewRSA_AES_CBC_SHA256Model()
-
-	fmt.Println(cs)
-	fmt.Println(cs_rsa)
-	cs.CipherSuiteInterface = cs_rsa
-	fmt.Println(cs.CipherSuiteInterface.CipherSuiteKey())
+	//cs := &CipherSuite{}
+	//cs_rsa := cipherSuites.NewRSA_AES_CBC_SHA256Model()
+	//
+	//fmt.Println(cs)
+	//fmt.Println(cs_rsa)
+	//cs.CipherSuiteInterface = cs_rsa
+	//fmt.Println(cs.CipherSuiteInterface.CipherSuiteKey())
 	//cs.cipherSuiteInterface = cs_rsa
 }
 

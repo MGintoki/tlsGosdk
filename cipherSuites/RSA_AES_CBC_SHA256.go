@@ -11,11 +11,10 @@ import (
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/pem"
-	"github.com/pretty66/gosdk"
+	//"github.com/pretty66/gosdk"
 	"github.com/pretty66/gosdk/errno"
 	"log"
 	"runtime"
-	"time"
 )
 
 var _RSA_AES_CBC_SHA256 *RSA_AES_CBC_SHA256
@@ -32,8 +31,7 @@ func (c *RSA_AES_CBC_SHA256) CipherSuiteKey() int {
 }
 
 const (
-	//对称密钥的长度
-	KEY_LENGTH = 32
+
 	//偏移量，相同的明文和密钥，偏移量不同，密钥也会不同
 	//偏移量无保密要求，有随机要求
 	IVAES = "IVAESIVAESIVAESI"
@@ -45,19 +43,8 @@ type RSA_AES_CBC_SHA256 struct {
 type sss_s struct {
 }
 
-func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (symmetricKey *gosdk.SymmetricKey) {
-
-	key := GetRandom(KEY_LENGTH)
-	sessionId := string(GetRandom(gosdk.UUID_LENGTH))
-	return &gosdk.SymmetricKey{
-		SessionId:    sessionId,
-		IsResumption: true,
-		KeyType:      "AES",
-		Key:          key,
-		CipherSuite:  gosdk.RSA_AES_CBC_SHA256,
-		CreatedAt:    time.Time{},
-		ExpiresAT:    time.Time{},
-	}
+func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (key []byte) {
+	return
 }
 
 func (c *RSA_AES_CBC_SHA256) AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error) {

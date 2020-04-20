@@ -75,9 +75,13 @@ var (
 	/**
 	 * from 2001-2100 cipher suite error
 	 */
-	SYMMETRIC_KEY_INVALID    = &Errno{2001, "invalid symmetric key length "}
+	SYMMETRIC_KEY_INVALID       = &Errno{2001, "invalid symmetric key length "}
+	SYMMETRIC_KEY_ENCRYPT_ERROR = &Errno{2007, "symmetric key encrypt error "}
+	SYMMETRIC_KEY_DECRYPT_ERROR = &Errno{2008, "symmetric key decrypt error "}
+
 	PADDING_INVALID          = &Errno{2002, "invalid padding "}
 	ASYMMETRIC_ENCRYPT_ERROR = &Errno{2003, "asymmetricKey encrypt error "}
+	ASYMMETRIC_DECRYPT_ERROR = &Errno{2004, "asymmetricKey decrypt error "}
 	CREATE_MAC_ERROR         = &Errno{2005, "create MAC error "}
 	MAC_VERIFY_ERROR         = &Errno{2006, "MAC verify error "}
 
