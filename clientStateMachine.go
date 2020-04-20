@@ -16,7 +16,11 @@ func SendHandshake(handshake *Handshake) (out *Handshake, err error) {
 	if err != nil {
 		return out, err
 	}
+
 	request, err := http.NewRequest("POST", url, bytes.NewReader(hsByte))
+	if handshake.ActionCode == CLIENT_HELLO_CODE {
+		request.Method = "OPTION"
+	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
 		return out, err

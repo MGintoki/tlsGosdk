@@ -1,6 +1,6 @@
 package gosdk
 
-type CertLoader interface {
+type CertLoaderInterface interface {
 	GetCert(cipherSuite int) []byte
 	GetCertChain(cipherSuite int) [][]byte
 }

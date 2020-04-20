@@ -131,13 +131,19 @@ func TestHandshakeRequest(t *testing.T) {
 		SendTime:      time.Time{},
 		ClientHello:   nil,
 	}
+	clientHello := &ClientHello{
+		IsClientEncryptRequired: false,
+		IsCertRequired:          true,
+		CipherSuites:            nil,
+	}
+	sendHs.ClientHello = clientHello
 	sendHsByte, err := json.Marshal(sendHs)
 	if err != nil {
 		fmt.Println(err)
 	}
 	url := REQUEST_URL + "/handshake"
 	client := http.Client{}
-	request, err := http.NewRequest("POST", url, bytes.NewReader(sendHsByte))
+	request, err := http.NewRequest("OPTION", url, bytes.NewReader(sendHsByte))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	if err != nil {

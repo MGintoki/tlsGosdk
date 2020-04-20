@@ -55,6 +55,7 @@ var (
 	RESPONSE_OTHER              = &ResponseErrno{1123, "response other", 0, ""}
 	UNKNOWN_ERROR               = &Errno{1130, "unknown error"}
 	NETWORK_EMPTY_RESPONSE      = &Errno{1102, "network empty response"}
+	HTTP_NEW_REQUEST_ERROR      = &Errno{1103, "http new request error"}
 
 	/**
 	 * from 1301 to 1399 sdk inner error
@@ -89,4 +90,10 @@ var (
 	 * from 2101 - 2200 cert error
 	 */
 	CERT_VERIFY_ERROR = &Errno{2101, "cert verify failed "}
+
+	/**
+	 * from 2201-2300 file error
+	 */
+	FILE_READ_ERROR  = &Errno{2201, "file read error "}
+	FILE_WRITE_ERROR = &Errno{2202, "file write error "}
 )

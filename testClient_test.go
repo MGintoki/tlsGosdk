@@ -74,6 +74,7 @@ func TestClientStartTLS(t *testing.T) {
 	fmt.Println("client tls config ok")
 	fmt.Println("handshake state -> client_init")
 	//发送client hello
+
 	out, err := client.tlsConfig.HandshakeState.handleAction(clientTlsConfig, nil, CLIENT_HELLO_CODE)
 	if err != nil {
 		log.Fatal(err)

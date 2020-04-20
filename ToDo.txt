@@ -1,0 +1,7 @@
+1.证书、证书链的验证
+2.ECDSA加密套件
+3.SDK的使用者如何使用TLS，整合到现有SDK中
+4.ServerInitState复用TLSConfig进入加密连接，或是直接进入非加密连接
+5.服务端接收到appData解析之后，怎么交给客户端
+6.clientHello使用预检请求 //
+7.TLSConfig的保存与复用
