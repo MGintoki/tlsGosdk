@@ -1,13 +1,20 @@
 package gosdk
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pretty66/gosdk/cache"
+	"github.com/pretty66/gosdk/cipherSuites"
 	"github.com/pretty66/gosdk/errno"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type TlsClient struct {
@@ -37,54 +44,318 @@ func (c *TlsClient) Exec(method,
 	file *fileStruct) (out []byte, err error) {
 
 	//如果需要tls，则进行tls配置
-	if ifNeedTls(c.CurrentInfo, c.TargetInfo) {
+	if c.ifNeedTls(c.CurrentInfo, c.TargetInfo) {
 		tlsConfig, err := GetTlsConfigByIdns(c.CurrentInfo, c.TargetInfo)
 		if err != nil {
 			return out, err
 		}
 		//如果没有已经存在的配置，就新建一个
 		if tlsConfig == nil {
-			i, err := c.initTlsConfig(reqUrl)
+			tlsConfig, err := c.initTlsConfig(reqUrl)
 			if err != nil {
 				return nil, err
 			}
 			fmt.Println("init tls config success")
-			if c.TlsConfig.HandshakeState.currentState() != CLIENT_INIT_STATE {
+			//如果经过初始化方法，tlsConfig状态不为初始化完成，返回
+			if tlsConfig.HandshakeState.currentState() != CLIENT_INIT_STATE {
 				return out, errno.INVALID_HANDSHAKE_STATE_ERROR.Add("Current State -> " + strconv.Itoa(c.TlsConfig.HandshakeState.currentState()))
 			}
-			err = c.startTlsHandshake(i)
+			err = c.startTlsHandshake(tlsConfig)
 			if err != nil {
 				return out, errno.HANDSHAKE_ERROR.Add(err.Error())
 			}
-			if c.TlsConfig.HandshakeState.currentState() != CLIENT_ENCRYPTED_CONNECTION_STATE {
+			//如果握手完成后，状态不是 1：加密通信状态 2：非加密通信状态 则返回
+			if tlsConfig.HandshakeState.currentState() != CLIENT_ENCRYPTED_CONNECTION_STATE || tlsConfig.HandshakeState.currentState() != CLIENT_NO_ENCRYPT_CONNECTION_STATE {
 				return out, errno.INVALID_HANDSHAKE_STATE_ERROR.Add("Current State -> " + strconv.Itoa(c.TlsConfig.HandshakeState.currentState()))
 			}
-
-			//如果存在可用的配置，复用
+			//握手结束后保存tlsConfig到缓存里，方便复用
+			err = SaveTlsConfig(tlsConfig)
+			if err != nil {
+				return nil, err
+			}
 		} else {
-
+			//如果存在可用的配置，复用
+			tlsConfig.HandshakeState = &ClientEncryptedConnectionState{}
 		}
-		data = c.encryptData(data, tlsConfig)
+		//如果握手结束后，需要加密，则对数据进行加密处理，否则跳过加密步骤
+		if tlsConfig.IsEncryptRequired == true && tlsConfig.HandshakeState.currentState() == CLIENT_ENCRYPTED_CONNECTION_STATE {
+			//data, err = c.encryptData(data, tlsConfig, contentType, file)
+			//if err != nil {
+			//	return nil, err
+			//}
+			dataMarshal, err := json.Marshal(data)
+			if err != nil {
+				return nil, errno.JSON_ERROR.Add(err.Error())
+			}
+			//appData里的数据，转换成字节流后base64压缩成字符串
+			dataStr := base64.StdEncoding.EncodeToString(dataMarshal)
+			MAC := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataMarshal)
+			MACEncrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyEncrypt(MAC, tlsConfig.SymmetricKey)
+			MACEncryptedToStr := base64.StdEncoding.EncodeToString(MACEncrypted)
+			if err != nil {
+				return nil, errno.SYMMETRIC_KEY_ENCRYPT_ERROR.Add(err.Error())
+			}
+			appData := &AppData{
+				Data: dataStr,
+				MAC:  MACEncryptedToStr,
+			}
+			handshake := &Handshake{
+				Version:       "",
+				HandshakeType: 0,
+				ActionCode:    CLIENT_APP_DATA_CODE,
+				SessionId:     tlsConfig.SessionId,
+				SendTime:      time.Time{},
+				AppData:       appData,
+			}
+			//发送appData并接收服务端响应
+			//默认发送json格式，由中间件接收到appData之后，根据header里的contentType重新设置request交给服务端
+			resHandshake, err := tlsConfig.HandshakeState.handleAction(tlsConfig, handshake, handshake.ActionCode)
+			if err != nil {
+				return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
+			}
+			dataEncryptedStr := resHandshake.AppData.Data
+			dataEncryptedByte, err := base64.StdEncoding.DecodeString(dataEncryptedStr)
+			if err != nil {
+				return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
+			}
+			dataPlainText, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(dataEncryptedByte, tlsConfig.SymmetricKey)
+			if err != nil {
+				return nil, errno.SYMMETRIC_KEY_DECRYPT_ERROR
+			}
+			return dataPlainText, err
+		}
+
 	}
+	//如果部署指定，不需要加密，则发送clientHello（预检请求）
+
+	//发送数据 （如果数据是加密的，则需要设置请求头sessionId和handshakeMsg
 
 	return
 }
 
+func (c *TlsClient) parseBody(
+	method,
+	reqUrl string,
+	data map[string]interface{},
+	contentType string,
+	file *fileStruct,
+) (req *http.Request, err error) {
+	// todo 多文件上传
+	method = strings.ToUpper(method)
+
+	switch contentType {
+	case CONTENT_TYPE_FORM:
+		theData := url.Values{}
+		for k, v := range data {
+			theData.Set(k, fmt.Sprint(v))
+		}
+		body := strings.NewReader(theData.Encode())
+		req, err = http.NewRequest(method, reqUrl, body)
+		if err != nil {
+			err = errno.REQUEST_SETING_ERROR.Add(err.Error())
+			return
+		}
+		req.Header.Set("Content-Type", CONTENT_TYPE_FORM)
+	case CONTENT_TYPE_JSON:
+		bytesData, err := json.Marshal(data)
+		if err != nil {
+			return nil, errno.JSON_ERROR.Add(err.Error())
+		}
+		body := bytes.NewReader(bytesData)
+		req, err = http.NewRequest(method, reqUrl, body)
+		if err != nil {
+			err = errno.REQUEST_SETING_ERROR.Add(err.Error())
+			return req, err
+		}
+		req.Header.Set("Content-Type", CONTENT_TYPE_JSON)
+
+	case CONTENT_TYPE_MULTIPART:
+		buff := &bytes.Buffer{}
+		bodyWriter := multipart.NewWriter(buff)
+		// 写入其他参数
+		for k, v := range data {
+			err := bodyWriter.WriteField(k, fmt.Sprint(v))
+			if err != nil {
+				return nil, errno.DATA_WRONG_TYPE.Add(err.Error())
+			}
+		}
+		if file != nil {
+			// 写入文件
+			fileWriter, err := bodyWriter.CreateFormFile(file.fileKey, file.fileName)
+			if err != nil {
+				return nil, errno.SDK_ERROR.Add(err.Error())
+			}
+
+			_, err = io.Copy(fileWriter, file.file)
+			if err != nil {
+				return nil, errno.SDK_ERROR.Add(err.Error())
+			}
+		}
+		req, err = http.NewRequest(method, reqUrl, buff)
+		if err != nil {
+			err = errno.REQUEST_SETING_ERROR.Add(err.Error())
+			return
+		}
+		req.Header.Set("Content-Type", bodyWriter.FormDataContentType())
+	}
+	return
+}
+
 //初始化tls配置
-func (c *TlsClient) initTlsConfig(reqUrl string) (tlsConfig *TlsConfig, err error) {
-	return nil, nil
+func (c *TlsClient) initTlsConfig(reqUrl string) (out *TlsConfig, err error) {
+	tlsConfig := &TlsConfig{
+		SessionId:             "",
+		IsClient:              true,
+		CurrentInfo:           c.CurrentInfo,
+		TargetInfo:            c.TargetInfo,
+		RequestUrl:            reqUrl,
+		HandshakeState:        nil,
+		IsEncryptRequired:     c.ifNeedTls(c.CurrentInfo, c.TargetInfo),
+		IsCertRequired:        c.isCertRequired(c.CurrentInfo, c.TargetInfo),
+		State:                 TLS_STATE_ACTIVING,
+		CipherSuites:          c.getCipherSuites(c.CurrentInfo, c.TargetInfo),
+		CipherSuite:           0,
+		Time:                  time.Time{},
+		Timeout:               0,
+		Randoms:               nil,
+		PrivateKey:            nil,
+		PublicKey:             nil,
+		SymmetricKey:          nil,
+		SymmetricKeyCreatedAt: time.Time{},
+		SymmetricKeyExpiresAt: nil,
+		Cert:                  nil,
+		CertChain:             nil,
+		CertLoader:            nil,
+		HandshakeMsgs:         nil,
+		Logs:                  nil,
+	}
+	timeOut, KeyTimeOut, isReuse, err := c.getInitInfo(c.CurrentInfo, c.TargetInfo)
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig.Timeout = timeOut
+	tlsConfig.SymmetricKeyExpiresAt = tlsConfig.SymmetricKeyCreatedAt.Add(KeyTimeOut)
+	tlsConfig.IsReuse = isReuse
+	cert, certChain, publicKey, err := c.getCert(c.CurrentInfo, c.TargetInfo)
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig.Cert = cert
+	tlsConfig.CertChain = certChain
+	tlsConfig.PublicKey = publicKey
+	tlsConfig.HandshakeState = &ClientInitState{}
+	return
 }
 
 func (c *TlsClient) startTlsHandshake(tlsConfig *TlsConfig) (err error) {
+	//发送clientHello
+	clientHelloHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, nil, CLIENT_HELLO_CODE)
+	if err != nil {
+		return err
+	}
+	if clientHelloHSOut.ActionCode == SERVER_HELLO_CODE && clientHelloHSOut.ServerHello.IsServerEncryptRequired {
+		tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
+		tlsConfig.IsEncryptRequired = true
+	} else if clientHelloHSOut.ActionCode == SERVER_HELLO_CODE && clientHelloHSOut.ServerHello.IsServerEncryptRequired == false {
+		tlsConfig.HandshakeState = &ClientNoEncryptConnectionState{}
+		tlsConfig.IsEncryptRequired = false
+		return
+	}
+	fmt.Println("client hello done")
+	clientKeyExchangeHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, clientHelloHSOut, clientHelloHSOut.ActionCode)
+	if err != nil {
+		return errno.HANDSHAKE_ERROR.Add(err.Error())
+	}
+	if clientKeyExchangeHSOut.ActionCode == SERVER_FINISHED_CODE && tlsConfig.IsEncryptRequired {
+		tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
+	} else {
+		return errno.INVALID_HANDSHAKE_STATE_ERROR
+	}
+
 	return nil
 }
 
-func (c *TlsClient) encryptData(data map[string]interface{}, tlsConfig *TlsConfig) (out map[string]interface{}) {
-	return nil
+func (c *TlsConfig) SendHandshake(handshake *Handshake) (out *Handshake, err error) {
+	//以后换成getClient方法
+	client := http.Client{}
+	reqUrl := c.RequestUrl
+	hsByte, err := json.Marshal(handshake)
+	if err != nil {
+		return out, err
+	}
+
+	request, err := http.NewRequest("POST", reqUrl, bytes.NewReader(hsByte))
+	if err != nil {
+		return nil, errno.REQUEST_SETING_ERROR.Add(err.Error())
+	}
+	if handshake.ActionCode == CLIENT_HELLO_CODE {
+		request.Method = "OPTION"
+	}
+	request.Header.Set("Content-Type", CONTENT_TYPE_JSON)
+	request.Header.Set("HandShake-Code", strconv.Itoa(handshake.ActionCode))
+	if c.SessionId != "" {
+		request.Header.Set("Session-Id", c.SessionId)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return out, err
+	}
+	defer response.Body.Close()
+	err = json.NewDecoder(response.Body).Decode(&out)
+	return out, err
+
 }
 
-func ifNeedTls(currentInfo Idn, targetInfo Idn) bool {
-	return true
+//func (c *TlsClient) encryptData(data map[string]interface{}, tlsConfig *TlsConfig, contentType string, file *fileStruct) (out map[string]interface{}, err error) {
+//	outMap := map[string]interface{}{}
+//	switch contentType {
+//	case CONTENT_TYPE_FORM:
+//		//contentType为json时，将数据序列化在加密，得到的字节数组采用base64编码成string返回
+//	case CONTENT_TYPE_JSON:
+//		dataByte, err := json.Marshal(data)
+//		if err != nil {
+//			return nil, errno.JSON_ERROR.Add(err.Error())
+//		}
+//		cipherText, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyEncrypt(dataByte, tlsConfig.SymmetricKey)
+//		if err != nil {
+//			return nil, err
+//		}
+//		cipherTextEncode := base64.StdEncoding.EncodeToString(cipherText)
+//		outMap["encryptedData"] = cipherTextEncode
+//		return outMap, err
+//	case CONTENT_TYPE_MULTIPART:
+//		return
+//	default:
+//		return nil, errno.CONTENT_TYPE_ERROR.Add("Current ContentType " + contentType + " Not Allowed")
+//	}
+//	return
+//}
+
+func (c *TlsClient) ifNeedTls(currentInfo Idn, targetInfo Idn) bool {
+	if currentInfo.AppKey != targetInfo.AppKey {
+		return true
+	}
+	return false
+}
+
+func (c *TlsClient) isCertRequired(currentInfo Idn, targetInfo Idn) bool {
+	if currentInfo.AppKey != targetInfo.AppKey {
+		return true
+	}
+	return false
+}
+
+func (c *TlsClient) getInitInfo(currentInfo Idn, targetInfo Idn) (timeOut time.Duration, keyTimeOut time.Duration, isReuse bool, err error) {
+	return TIMEOUT * time.Second, KEY_TIME_OUT * time.Hour, true, nil
+}
+func (c *TlsClient) getCert(currentInfo Idn, targetInfo Idn) (outCert []byte, outCertChain [][]byte, outPublicKey []byte, err error) {
+	return nil, nil, nil, nil
+}
+
+func (c *TlsClient) getCipherSuites(currentInfo Idn, targetInfo Idn) (out []int) {
+	out = append(out, cipherSuites.CIPHER_SUITE_MAP["ECDSA_AES256_CBC_SHA256"])
+	out = append(out, cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"])
+	return
 }
 
 //从缓存中获取到Tls配置map,该map由json.marshal序列化成字符串后，以base64编码的形式存在缓存中

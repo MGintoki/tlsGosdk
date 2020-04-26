@@ -1,39 +1,38 @@
 package gosdk
 
 import (
-	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pretty66/gosdk/errno"
-	"net/http"
 	"time"
 )
 
-func SendHandshake(handshake *Handshake) (out *Handshake, err error) {
-	client := http.Client{}
-	url := GetHSRequestRoute()
-	hsByte, err := json.Marshal(handshake)
-	if err != nil {
-		return out, err
-	}
-
-	request, err := http.NewRequest("POST", url, bytes.NewReader(hsByte))
-	if handshake.ActionCode == CLIENT_HELLO_CODE {
-		request.Method = "OPTION"
-	}
-	request.Header.Set("Content-Type", "application/json")
-	if err != nil {
-		return out, err
-	}
-	response, err := client.Do(request)
-	if err != nil {
-		return out, err
-	}
-	defer response.Body.Close()
-	err = json.NewDecoder(response.Body).Decode(&out)
-	return out, err
-
-}
+//func SendHandshake(handshake *Handshake) (out *Handshake, err error) {
+//	client := http.Client{}
+//	url := GetHSRequestRoute()
+//	hsByte, err := json.Marshal(handshake)
+//	if err != nil {
+//		return out, err
+//	}
+//
+//	request, err := http.NewRequest("POST", url, bytes.NewReader(hsByte))
+//	if handshake.ActionCode == CLIENT_HELLO_CODE {
+//		request.Method = "OPTION"
+//	}
+//	request.Header.Set("Content-Type", "application/json")
+//	if err != nil {
+//		return out, err
+//	}
+//	response, err := client.Do(request)
+//	if err != nil {
+//		return out, err
+//	}
+//	defer response.Body.Close()
+//	err = json.NewDecoder(response.Body).Decode(&out)
+//	return out, err
+//
+//}
 
 type ClientInitState struct {
 }
@@ -59,7 +58,7 @@ func (c *ClientInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 			ClientHello:   clientHello,
 		}
 		fmt.Println("client hello handshake init ")
-		out, err = SendHandshake(clientHelloHandshake)
+		out, err = tlsConfig.SendHandshake(clientHelloHandshake)
 		fmt.Println("client hello sent")
 		if err != nil {
 			return out, err
@@ -132,7 +131,7 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		clientKeyExchange := ClientKeyExchange{
 			//SymmetricKey: encryptedSymmetricKey,
 			SymmetricKey: encryptedSymmetricKey,
-			MAC:          nil,
+			MAC:          "",
 		}
 		clientKeyExchangeHandshake := &Handshake{
 			Version:           "",
@@ -150,9 +149,10 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		if err != nil {
 			return out, errno.CREATE_MAC_ERROR.Add("Client Create MAC Error")
 		}
-		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MACEncrypted
+		MACEncryptedToStr := base64.StdEncoding.EncodeToString(MACEncrypted)
+		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MACEncryptedToStr
 		fmt.Println("generate client key exchange")
-		out, err := SendHandshake(clientKeyExchangeHandshake)
+		out, err := tlsConfig.SendHandshake(clientKeyExchangeHandshake)
 		fmt.Println("sent client key exchange")
 		tlsConfig.HandshakeState = &ClientSentKeyExchangeState{}
 		if err != nil {
@@ -214,26 +214,52 @@ func (c *ClientEncryptedConnectionState) currentState() int {
 
 func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
-	case CLIENT_CLOSE_NOTIFY_CODE:
-		clientCloseNotify := &ClientCloseNotify{}
-		handshake := &Handshake{
-			Version:           "",
-			HandshakeType:     0,
-			ActionCode:        CLIENT_CLOSE_NOTIFY_CODE,
-			SessionId:         handshake.SessionId,
-			SendTime:          time.Time{},
-			ClientCloseNotify: clientCloseNotify,
-		}
-		tlsConfig.HandshakeState = &ClientClosedState{}
-		fmt.Println("Client State -> Client Closed")
-		err = SaveTLSConfigToTlsConfigMap(CLIENT_TLS_CONFIG_FILE_PATH, *tlsConfig)
+	case CLIENT_APP_DATA_CODE:
+		out, err = tlsConfig.SendHandshake(handshake)
 		if err != nil {
-			return nil, err
+			return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
 		}
-		fmt.Println("Save TlsConfig To Config Map")
-		out, err = SendHandshake(handshake)
-		fmt.Println("Send Client Close Notify")
-		return
+		if out.ActionCode == CLIENT_APP_DATA_CODE {
+			//对appData的MAC进行一个验证
+			data := out.AppData.Data
+			dataByte, err := base64.StdEncoding.DecodeString(data)
+			MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataByte)
+			MACReceivedByte, err := base64.StdEncoding.DecodeString(handshake.AppData.MAC)
+			if err != nil {
+				return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
+			}
+			MACReceived, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(MACReceivedByte, tlsConfig.SymmetricKey)
+			if err != nil {
+				return nil, errno.JSON_ERROR.Add(err.Error())
+			}
+			if string(MACLocal) != string(MACReceived) {
+				return nil, errno.MAC_VERIFY_ERROR
+			}
+
+		} else {
+			return nil, errno.HANDSHAKE_ERROR.Add("Danger Connection")
+		}
+		return out, err
+		//case CLIENT_CLOSE_NOTIFY_CODE:
+		//	clientCloseNotify := &ClientCloseNotify{}
+		//	handshake := &Handshake{
+		//		Version:           "",
+		//		HandshakeType:     0,
+		//		ActionCode:        CLIENT_CLOSE_NOTIFY_CODE,
+		//		SessionId:         handshake.SessionId,
+		//		SendTime:          time.Time{},
+		//		ClientCloseNotify: clientCloseNotify,
+		//	}
+		//	tlsConfig.HandshakeState = &ClientClosedState{}
+		//	fmt.Println("Client State -> Client Closed")
+		//	err = SaveTLSConfigToTlsConfigMap(CLIENT_TLS_CONFIG_FILE_PATH, *tlsConfig)
+		//	if err != nil {
+		//		return nil, err
+		//	}
+		//	fmt.Println("Save TlsConfig To Config Map")
+		//	out, err = tlsConfig.SendHandshake(handshake)
+		//	fmt.Println("Send Client Close Notify")
+		//	return
 	}
 	return
 }

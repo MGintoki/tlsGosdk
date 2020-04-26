@@ -20,8 +20,11 @@ func HandleTLS(next echo.HandlerFunc) echo.HandlerFunc {
 
 func TestMid(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		_cache := cache.NewCache(false, 0)
-		_cache.Set("testCache", "testtest", 0)
+		handshakeCode := c.Request().Header.Get("Handshake-Code")
+		//如果没有handshakeActionCode，则该链接为非加密连接
+		if handshakeCode != "" {
+			//判断该请求是否需要加密
+		}
 		switch c.Request().Header.Get("Content-Type") {
 		case gosdk.CONTENT_TYPE_JSON:
 			b, err := ioutil.ReadAll(c.Request().Body)

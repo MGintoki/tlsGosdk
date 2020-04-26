@@ -29,7 +29,7 @@ type TlsConfig struct {
 	SymmetricKey          []byte                `json:"symmetricKey"`          //通信密钥 由指定的cipherSuite生成
 	SymmetricKeyCreatedAt time.Time             `json:"symmetricKeyCreatedAt"` //通信密钥创建的时间
 	SymmetricKeyExpiresAt time.Time             `json:"symmetricKeyExpiresAt"` //通信密钥过期的时间
-	IsReuse               time.Time             `json:"isReuse"`               //是否可以复用该配置
+	IsReuse               bool                  `json:"isReuse"`               //是否可以复用该配置
 	Cert                  []byte                `json:"cert"`                  //证书 客户端有两种证书获取方式 ：1 从server hello中获取 2 从部署时指定的路径获取
 	CertChain             [][]byte              `json:"certChain"`             //证书验证链
 	CertLoader            CertLoaderInterface   `json:"certLoaderInterface"`   //用户传入的证书工厂，可根据指定的cipherSuite获取相应的证书和证书验证链

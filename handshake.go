@@ -40,17 +40,17 @@ type ServerHello struct {
 type ClientKeyExchange struct {
 	SymmetricKey []byte `json:"symmetricKey"`
 	Random       string `json:"random"`
-	MAC          []byte `json:"MAC"`
+	MAC          string `json:"MAC"`
 }
 
 type ServerFinished struct {
 	SessionId string `json:"sessionId"`
-	MAC       []byte `json:"MAC"`
+	MAC       string `json:"MAC"`
 }
 
 type AppData struct {
-	Data map[string]interface{} `json:"data"`
-	MAC  []byte                 `json:"MAC"`
+	Data string `json:"data"`
+	MAC  string `json:"MAC"`
 }
 
 type ClientCloseNotify struct {
@@ -58,7 +58,7 @@ type ClientCloseNotify struct {
 
 type Alert struct {
 	Alert string `json:"alert"`
-	Msg   []byte `json:"msg"`
+	Msg   string `json:"msg"`
 }
 
 type StateMachine struct {
@@ -94,6 +94,21 @@ const (
 
 )
 
+const (
+	//每种握手消息都会有一个type，所有的alert， type都为alert
+	CLIENT_HELLO_TYPE        = "CLIENT_HELLO_TYPE"
+	CLIENT_KEY_EXCHANGE_TYPE = "CLIENT_KEY_EXCHANGE_TYPE"
+	CLIENT_CLOSE_NOTIFY_TYPE = "CLIENT_CLOSE_NOTIFY_TYPE"
+
+	SERVER_HELLO_TYPE    = "SERVER_HELLO_TYPE"
+	SERVER_FINISHED_TYPE = "SERVER_FINISHED_TYPE"
+
+	CLIENT_APP_DATA_TYPE = "CLIENT_APP_DATA_TYPE"
+	SERVER_APP_DATA_TYPE = "SERVER_APP_DATA_TYPE"
+
+	ALERT_TYPE = "ALERT_TYPE"
+)
+
 //定义handshakeCode 一个handshake或是一个alert 视作一个handshake
 const (
 	//每种握手消息都会有一个code，客户端或服务端接收到一个握手消息，根据code可能引起状态的转变
@@ -104,12 +119,12 @@ const (
 	SERVER_HELLO_CODE    = 20
 	SERVER_FINISHED_CODE = 21
 
-	APP_DATA_CODE = 30
+	CLIENT_APP_DATA_CODE = 30
+	SERVER_APP_DATA_CODE = 31
 
 	ALERT_1_CODE = 40
 	//下面是预留的alert 的code
 	//下面是非握手消息的actionCode
-	SEND_CLIENT_HELLO_CODE = 501
 )
 
 //定义路由

@@ -32,6 +32,9 @@ const CONNECT_TIMEOUT = 2.0
  */
 const TIMEOUT = 3.0
 
+//密钥过期时间
+const KEY_TIME_OUT = 86400
+
 /*
  * 支持的请求方法
  */

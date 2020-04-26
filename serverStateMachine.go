@@ -1,6 +1,7 @@
 package gosdk
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/pretty66/gosdk/cipherSuites"
@@ -103,7 +104,11 @@ func (c *ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshak
 		tlsConfig.SymmetricKey = symmetricKey
 		//将对称密钥加密的MAC解密
 		clientEncryptedMAC := handshake.ClientKeyExchange.MAC
-		clientMAC, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(clientEncryptedMAC, tlsConfig.SymmetricKey)
+		clientEncryptedMACByte, err := base64.StdEncoding.DecodeString(clientEncryptedMAC)
+		if err != nil {
+			return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
+		}
+		clientMAC, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(clientEncryptedMACByte, tlsConfig.SymmetricKey)
 		if err != nil {
 			return out, errno.SYMMETRIC_KEY_DECRYPT_ERROR.Add(err.Error())
 		}
@@ -120,14 +125,15 @@ func (c *ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshak
 		//生成Server Finished 开启加密通信
 		serverFinished := &ServerFinished{
 			SessionId: tlsConfig.SessionId,
-			MAC:       nil,
+			MAC:       "",
 		}
 		//将服务器端的三次握手消息用通信密钥加密
 		encryptedServerMAC, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyEncrypt(serverMAC, tlsConfig.SymmetricKey)
 		if err != nil {
 			return out, errno.SYMMETRIC_KEY_ENCRYPT_ERROR.Add("Server Encrypt MAC Error " + err.Error())
 		}
-		serverFinished.MAC = encryptedServerMAC
+		encryptedServerMACToStr := base64.StdEncoding.EncodeToString(encryptedServerMAC)
+		serverFinished.MAC = encryptedServerMACToStr
 		serverFinishedHandshake := &Handshake{
 			Version:        "",
 			HandshakeType:  0,

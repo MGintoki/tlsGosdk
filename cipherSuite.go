@@ -49,7 +49,7 @@ func NewCipherSuiteModel(cipherSuitCode int) *CipherSuite {
 func CreateNegotiateMAC(tlsConfig *TlsConfig) (MAC []byte, err error) {
 	cs := NewCipherSuiteModel(tlsConfig.CipherSuite)
 	//将来需要加一个检测 检测handshakeMsgs中是否含有三个消息
-	tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = nil
+	tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = ""
 	chByte, err := json.Marshal(tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE].ClientHello)
 	if err != nil {
 		return MAC, errno.JSON_ERROR.Add("Client Hello Marshal error")
@@ -59,7 +59,7 @@ func CreateNegotiateMAC(tlsConfig *TlsConfig) (MAC []byte, err error) {
 		return MAC, errno.JSON_ERROR.Add("Server Hello Marshal error")
 	}
 	//client CreateMAC时，client key exchange的MAC是空的，所以服务端这里生成时也要置MAC为空
-	tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = nil
+	tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange.MAC = ""
 	ckeByte, err := json.Marshal(tlsConfig.HandshakeMsgs[CLIENT_KEY_EXCHANGE_CODE].ClientKeyExchange)
 	if err != nil {
 		return MAC, errno.JSON_ERROR.Add("Client Key Exchange Marshal error")
