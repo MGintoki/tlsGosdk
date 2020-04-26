@@ -44,10 +44,10 @@ func TestHelloClient(t *testing.T) {
 func TestClientStartTLS(t *testing.T) {
 	//初始化client
 	client := TlsClient{
-		clientInfo:  "testClient",
-		serverInfo:  "testServer",
-		requestPath: "http://127.0.0.1:8081",
-		tlsConfig:   nil,
+		CurrentInfo: Idn{},
+		TargetInfo:  Idn{},
+		RequestPath: "http://127.0.0.1:8081",
+		TlsConfig:   nil,
 	}
 	//初始化client的tlsConfig
 	hsmap := map[int]Handshake{}
@@ -57,7 +57,6 @@ func TestClientStartTLS(t *testing.T) {
 		HandshakeState:    &ClientInitState{},
 		IsCertRequired:    true,
 		IsEncryptRequired: true,
-		ServerName:        "",
 		State:             TLS_STATE_ACTIVING,
 		CipherSuites:      []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
 		CipherSuite:       cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"],
@@ -70,33 +69,33 @@ func TestClientStartTLS(t *testing.T) {
 		HandshakeMsgs:     hsmap,
 		Logs:              nil,
 	}
-	client.tlsConfig = clientTlsConfig
+	client.TlsConfig = clientTlsConfig
 	fmt.Println("client tls config ok")
 	fmt.Println("handshake state -> client_init")
 	//发送client hello
 
-	out, err := client.tlsConfig.HandshakeState.handleAction(clientTlsConfig, nil, CLIENT_HELLO_CODE)
+	out, err := client.TlsConfig.HandshakeState.handleAction(clientTlsConfig, nil, CLIENT_HELLO_CODE)
 	if err != nil {
 		log.Fatal(err)
 	}
 	//如果server hello 中需要加密，client 进入 已接收server hello 状态
 	//如果不需要加密，进入非加密连接状态
 	if out.ActionCode == SERVER_HELLO_CODE && out.ServerHello.IsServerEncryptRequired {
-		client.tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
-		client.tlsConfig.IsEncryptRequired = true
+		client.TlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
+		client.TlsConfig.IsEncryptRequired = true
 	} else if out.ActionCode == SERVER_HELLO_CODE && out.ServerHello.IsServerEncryptRequired == false {
-		client.tlsConfig.HandshakeState = &ClientNoEncryptConnectionState{}
-		client.tlsConfig.IsEncryptRequired = false
+		client.TlsConfig.HandshakeState = &ClientNoEncryptConnectionState{}
+		client.TlsConfig.IsEncryptRequired = false
 	}
 	fmt.Println("received server hello")
-	out, err = client.tlsConfig.HandshakeState.handleAction(client.tlsConfig, out, out.ActionCode)
+	out, err = client.TlsConfig.HandshakeState.handleAction(client.TlsConfig, out, out.ActionCode)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if out.ActionCode == SERVER_FINISHED_CODE && client.tlsConfig.IsEncryptRequired {
-		client.tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
+	if out.ActionCode == SERVER_FINISHED_CODE && client.TlsConfig.IsEncryptRequired {
+		client.TlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
 	}
-	out, err = client.tlsConfig.HandshakeState.handleAction(client.tlsConfig, out, out.ActionCode)
+	out, err = client.TlsConfig.HandshakeState.handleAction(client.TlsConfig, out, out.ActionCode)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -107,9 +106,9 @@ func TestClientStartTLS(t *testing.T) {
 
 func TestServerStartTLS(t *testing.T) {
 	server := &TlsServer{
-		serverInfo: "test server",
-		listenPath: "localhost:8081",
-		tlsConfig:  nil,
+		ServerInfo: "test server",
+		ListenPath: "localhost:8081",
+		TlsConfig:  nil,
 	}
 	hsmap := map[int]Handshake{}
 	serverTlsConfig := &TlsConfig{
@@ -118,7 +117,6 @@ func TestServerStartTLS(t *testing.T) {
 		HandshakeState:    &ServerInitState{},
 		IsEncryptRequired: true,
 		IsCertRequired:    false,
-		ServerName:        "testServerName",
 		State:             TLS_STATE_ACTIVING,
 		CipherSuites:      []int{cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]},
 		CipherSuite:       cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"],
@@ -133,7 +131,7 @@ func TestServerStartTLS(t *testing.T) {
 		HandshakeMsgs:     hsmap,
 		Logs:              nil,
 	}
-	server.tlsConfig = serverTlsConfig
+	server.TlsConfig = serverTlsConfig
 	fmt.Println("server tls config ok")
 
 	http.HandleFunc(LISTEN_TLS, server.handleTLS)
@@ -149,7 +147,7 @@ func (c *TlsServer) handleTLS(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("receive handshake, actionCode : ->" + strconv.Itoa(hs.ActionCode))
 	fmt.Println("receive handshake info :")
 	fmt.Println(hs)
-	out, err := c.tlsConfig.HandshakeState.handleAction(c.tlsConfig, &hs, hs.ActionCode)
+	out, err := c.TlsConfig.HandshakeState.handleAction(c.TlsConfig, &hs, hs.ActionCode)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -253,3 +251,128 @@ A0+CrDSvVGp9QPuQhdCyf6INduHpINzeoz7RS2rqoo0ERgctwn62vL7mOnubAruJ
 nwIDAQAB
 -----END  WUMAN  RSA PUBLIC KEY -----`
 )
+
+func TestCache(t *testing.T) {
+	tlsConfigMap, err := GetTlsConfigMap()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(tlsConfigMap)
+	c1Idn1 := Idn{
+		AppId:   "",
+		AppKey:  "123",
+		Channel: "123",
+	}
+	c1Idn2 := Idn{
+		AppId:   "",
+		AppKey:  "456",
+		Channel: "456",
+	}
+	c1 := &TlsConfig{
+		SessionId:             "123456",
+		IsClient:              false,
+		CurrentInfo:           c1Idn1,
+		TargetInfo:            c1Idn2,
+		HandshakeState:        nil,
+		IsEncryptRequired:     false,
+		IsCertRequired:        false,
+		State:                 0,
+		CipherSuites:          nil,
+		CipherSuite:           0,
+		Time:                  time.Time{},
+		Timeout:               0,
+		Randoms:               nil,
+		PrivateKey:            nil,
+		PublicKey:             nil,
+		SymmetricKey:          nil,
+		SymmetricKeyCreatedAt: time.Time{},
+		SymmetricKeyExpiresAt: time.Time{},
+		IsReuse:               time.Time{},
+		Cert:                  nil,
+		CertChain:             nil,
+		CertLoader:            nil,
+		HandshakeMsgs:         nil,
+		Logs:                  nil,
+	}
+	err = SaveTlsConfig(c1)
+	if err != nil {
+		fmt.Println(err)
+	}
+	c2Idn1 := Idn{
+		AppId:   "",
+		AppKey:  "abc",
+		Channel: "abc",
+	}
+	c2Idn2 := Idn{
+		AppId:   "",
+		AppKey:  "def",
+		Channel: "def",
+	}
+	c2 := &TlsConfig{
+		SessionId:             "abcdef",
+		IsClient:              false,
+		CurrentInfo:           c2Idn1,
+		TargetInfo:            c2Idn2,
+		HandshakeState:        nil,
+		IsEncryptRequired:     false,
+		IsCertRequired:        false,
+		State:                 0,
+		CipherSuites:          nil,
+		CipherSuite:           0,
+		Time:                  time.Time{},
+		Timeout:               0,
+		Randoms:               nil,
+		PrivateKey:            nil,
+		PublicKey:             nil,
+		SymmetricKey:          nil,
+		SymmetricKeyCreatedAt: time.Time{},
+		SymmetricKeyExpiresAt: time.Time{},
+		IsReuse:               time.Time{},
+		Cert:                  nil,
+		CertChain:             nil,
+		CertLoader:            nil,
+		HandshakeMsgs:         nil,
+		Logs:                  nil,
+	}
+	err = SaveTlsConfig(c2)
+	if err != nil {
+
+	}
+	cacheC1, err := GetTlsConfigBySessionId("123456")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(cacheC1)
+	cacheC2, err := GetTlsConfigByIdns(c2Idn1, c2Idn2)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(cacheC2)
+
+}
+
+type AA struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}
+type BB struct {
+	Address string `json:"address"`
+	ZZ      AA     `json:"aa"`
+}
+
+func TestStructMarshal(t *testing.T) {
+
+}
+
+func TestSS(t *testing.T) {
+	a := &AA{
+		Name: "sfsdf",
+		Age:  1,
+	}
+	ss(a)
+	fmt.Println(a)
+}
+
+func ss(a *AA) {
+	a.Name = "dslkjdsfls"
+}

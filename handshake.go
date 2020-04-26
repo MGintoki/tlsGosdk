@@ -17,6 +17,7 @@ type Handshake struct {
 	ClientKeyExchange *ClientKeyExchange `json:"clientKeyExchange"`
 	ServerFinished    *ServerFinished    `json:"serverFinished"`
 	AppData           *AppData           `json:"appData"`
+	ClientCloseNotify *ClientCloseNotify `json:"clientCloseNotify"`
 	Alert             *Alert             `json:"alert"`
 }
 
@@ -52,6 +53,9 @@ type AppData struct {
 	MAC  []byte                 `json:"MAC"`
 }
 
+type ClientCloseNotify struct {
+}
+
 type Alert struct {
 	Alert string `json:"alert"`
 	Msg   []byte `json:"msg"`
@@ -77,7 +81,7 @@ const (
 	CLIENT_RECEIVED_SERVER_FINISHED_STATE = 1004 //客户度啊接收到server finished
 	CLIENT_NO_ENCRYPT_CONNECTION_STATE    = 1005 //客户端已建立非加密连接
 	CLIENT_ENCRYPTED_CONNECTION_STATE     = 1006 //客户端已建立加密连接
-	CLIENT_FINISHED_STATE                 = 1007 //客户端已关闭tls连接
+	CLIENT_CLOSED_STATE                   = 1007 //客户端已关闭tls连接
 
 	SERVER_INIT_STATE                        = 2000 //服务端已初始化tls连接
 	SERVER_RECEIVED_CLIENT_HELLO_STATE       = 2001 //服务端已接受client hello
@@ -86,7 +90,7 @@ const (
 	SERVER_SENT_FINISHED_STATE               = 2004 //服务端已发送开启加密通信
 	SERVER_NO_ENCRYPT_CONNECTION_STATE       = 2005 //服务端已建立非加密连接
 	SERVER_ENCRYPTED_CONNECTION_STATE        = 2006 //服务端已建立加密连接
-	SERVER_FINISHED_STATE                    = 2007 //服务端已关闭tls连接
+	SERVER_CLOSED_STATE                      = 2007 //服务端已关闭tls连接
 
 )
 

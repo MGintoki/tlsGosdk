@@ -21,7 +21,7 @@ func SendHandshake(handshake *Handshake) (out *Handshake, err error) {
 	if handshake.ActionCode == CLIENT_HELLO_CODE {
 		request.Method = "OPTION"
 	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Content-Type", "application/json")
 	if err != nil {
 		return out, err
 	}
@@ -173,7 +173,7 @@ func (c *ClientSentKeyExchangeState) currentState() int {
 }
 
 func (c *ClientSentKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	return nil, nil
 }
 
 type ClientReceivedServerFinishedState struct {
@@ -199,7 +199,10 @@ func (c *ClientNoEncryptConnectionState) currentState() int {
 }
 
 func (c *ClientNoEncryptConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	switch actionCode {
+	default:
+		return
+	}
 }
 
 type ClientEncryptedConnectionState struct {
@@ -210,6 +213,38 @@ func (c *ClientEncryptedConnectionState) currentState() int {
 }
 
 func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-
+	switch actionCode {
+	case CLIENT_CLOSE_NOTIFY_CODE:
+		clientCloseNotify := &ClientCloseNotify{}
+		handshake := &Handshake{
+			Version:           "",
+			HandshakeType:     0,
+			ActionCode:        CLIENT_CLOSE_NOTIFY_CODE,
+			SessionId:         handshake.SessionId,
+			SendTime:          time.Time{},
+			ClientCloseNotify: clientCloseNotify,
+		}
+		tlsConfig.HandshakeState = &ClientClosedState{}
+		fmt.Println("Client State -> Client Closed")
+		err = SaveTLSConfigToTlsConfigMap(CLIENT_TLS_CONFIG_FILE_PATH, *tlsConfig)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("Save TlsConfig To Config Map")
+		out, err = SendHandshake(handshake)
+		fmt.Println("Send Client Close Notify")
+		return
+	}
 	return
+}
+
+type ClientClosedState struct {
+}
+
+func (c *ClientClosedState) currentState() int {
+	return CLIENT_CLOSED_STATE
+}
+
+func (c *ClientClosedState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	return nil, nil
 }

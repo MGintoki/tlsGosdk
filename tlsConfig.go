@@ -11,11 +11,13 @@ import (
 
 type TlsConfig struct {
 	SessionId             string                `json:"sessionId"`
-	IsClient              bool                  `json:"isClient"`          //标志该tlsConfig持有者是客户端还是服务端
+	IsClient              bool                  `json:"isClient"` //标志该tlsConfig持有者是客户端还是服务端
+	CurrentInfo           Idn                   `json:"currentInfo"`
+	TargetInfo            Idn                   `json:"targetInfo"`
+	RequestUrl            string                `json:"requestUrl"`
 	HandshakeState        StateMachineInterface `json:"handshakeState"`    //握手状态 与状态机模式有关
 	IsEncryptRequired     bool                  `json:"isEncryptRequired"` //是否需要加密 如果有一方该字段为true，则开启加密通信
 	IsCertRequired        bool                  `json:"isCertRequired"`    //客户端初始化TLSConfig时可以指定是否需要证书
-	ServerName            string                `json:"serverName"`        //留作扩展的服务器名字
 	State                 int                   `json:"state"`             //TLS连接的状态
 	CipherSuites          []int                 `json:"cipherSuites"`      //客户端或是服务端持有的加密套件列表
 	CipherSuite           int                   `json:"cipherSuite"`       //协商时由服务端指定的加密套件
@@ -35,6 +37,9 @@ type TlsConfig struct {
 	Logs                  []string              `json:"logs"`                  //日志记录，留作扩展
 }
 
+type TlsConfigInterface interface {
+}
+
 const (
 	TLS_STATE_ACTIVING = 1 //TLS激活中
 	TLS_STATE_BROKE    = 0 //TLS断开
@@ -42,6 +47,9 @@ const (
 
 var _sessionMap map[string]TlsConfig
 var _currentTlsConfigFilePath string
+
+const CLIENT_TLS_CONFIG_FILE_PATH = "clientTlsConfig.txt"
+const SERVER_TLS_CONFIG_FILE_PATH = "serverTlsConfig.txt"
 
 //从指定的路径中获取
 func GetSessionMapFromFIle(tlsConfigFilePath string) (out map[string]TlsConfig, err error) {
@@ -92,6 +100,7 @@ func SaveTLSConfigToFile(tlsConfigFilePath string) (err error) {
 		return errno.FILE_WRITE_ERROR.Add(err.Error())
 		log.Fatal(n)
 	}
+	return
 
 }
 

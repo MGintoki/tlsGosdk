@@ -74,7 +74,7 @@ func (c *ServerReceivedClientHelloState) currentState() int {
 }
 
 func (c *ServerReceivedClientHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	return nil, nil
 }
 
 type ServerSentServerHelloState struct {
@@ -138,6 +138,9 @@ func (c *ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshak
 		}
 		fmt.Println("create server finished")
 		tlsConfig.HandshakeState = &ServerSentFinishedState{}
+		fmt.Println("sent server finished")
+		fmt.Println("server state -> Server Encrypted Con State")
+		tlsConfig.HandshakeState = &ServerEncryptedConnectionState{}
 		//tlsConfig.HandshakeState = &
 		return serverFinishedHandshake, err
 
@@ -153,7 +156,7 @@ func (c *ServerReceivedClientKeyExchangeState) currentState() int {
 }
 
 func (c *ServerReceivedClientKeyExchangeState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	return nil, nil
 }
 
 type ServerSentFinishedState struct {
@@ -164,7 +167,8 @@ func (c *ServerSentFinishedState) currentState() int {
 }
 
 func (c *ServerSentFinishedState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	return nil, nil
+
 }
 
 type ServerEncryptedConnectionState struct {
@@ -175,5 +179,39 @@ func (c *ServerEncryptedConnectionState) currentState() int {
 }
 
 func (c *ServerEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
-	panic("implement me")
+	switch actionCode {
+	case CLIENT_CLOSE_NOTIFY_CODE:
+		fmt.Println("Server Received Client Close Notify")
+		err = SaveTLSConfigToTlsConfigMap(SERVER_TLS_CONFIG_FILE_PATH, *tlsConfig)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig.HandshakeState = &ServerClosedState{}
+		fmt.Println("Server State -> Server Closed")
+		return
+	default:
+		return nil, nil
+	}
+}
+
+type ServerNoEncryptedConnectionState struct {
+}
+
+func (c *ServerNoEncryptedConnectionState) currentState() int {
+	return SERVER_NO_ENCRYPT_CONNECTION_STATE
+}
+
+func (c *ServerNoEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	return nil, nil
+}
+
+type ServerClosedState struct {
+}
+
+func (c *ServerClosedState) currentState() int {
+	return SERVER_CLOSED_STATE
+}
+
+func (c *ServerClosedState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
+	return nil, nil
 }

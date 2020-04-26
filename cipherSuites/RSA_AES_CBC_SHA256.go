@@ -1,7 +1,6 @@
 package cipherSuites
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
@@ -10,9 +9,10 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
-	//"github.com/pretty66/gosdk"
 	"github.com/pretty66/gosdk/errno"
+
 	"log"
 	"runtime"
 )
@@ -38,9 +38,6 @@ const (
 )
 
 type RSA_AES_CBC_SHA256 struct {
-}
-
-type sss_s struct {
 }
 
 func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (key []byte) {
@@ -110,11 +107,17 @@ func (c *RSA_AES_CBC_SHA256) AsymmetricKeySign(data, privateKey []byte) (sign []
 	myHash := sha256.New()
 	myHash.Write(data)
 	hashed := myHash.Sum(nil)
-	sign, err = rsa.SignPKCS1v15(rand.Reader, privateKeyParse, crypto.SHA256, hashed)
-	return
+	RSASign, err := rsa.SignPKCS1v15(rand.Reader, privateKeyParse, crypto.SHA256, hashed)
+	signIns := &SignIns{RSASign: RSASign}
+	signInsMarshal, err := json.Marshal(signIns)
+	if err != nil {
+		return sign, errno.JSON_ERROR.Add("SignIns Marshal Error")
+	}
+
+	return signInsMarshal, err
 }
 
-func (c *RSA_AES_CBC_SHA256) AsymmetricKeyVerifySign(data, sign, publicKey []byte) (flag bool) {
+func (c *RSA_AES_CBC_SHA256) AsymmetricKeyVerifySign(data, sign, publicKey []byte) (flag bool, err error) {
 	block, _ := pem.Decode(publicKey)
 	defer func() {
 		if err := recover(); err != nil {
@@ -131,8 +134,14 @@ func (c *RSA_AES_CBC_SHA256) AsymmetricKeyVerifySign(data, sign, publicKey []byt
 	myHash := sha256.New()
 	myHash.Write(data)
 	hashed := myHash.Sum(nil)
-	result := rsa.VerifyPKCS1v15(publicKeyParse, crypto.SHA256, hashed, sign)
-	return result == nil
+
+	var signIns SignIns
+	err = json.Unmarshal(sign, &signIns)
+	if err != nil {
+		return flag, errno.JSON_ERROR.Add("SignIns Unmarshal Error")
+	}
+	result := rsa.VerifyPKCS1v15(publicKeyParse, crypto.SHA256, hashed, signIns.RSASign)
+	return result == nil, err
 }
 
 func (c *RSA_AES_CBC_SHA256) SymmetricKeyEncrypt(plainText, symmetricKey []byte) (cipherText []byte, err error) {
@@ -174,20 +183,4 @@ func (c *RSA_AES_CBC_SHA256) CreateMAC(data []byte) (MAC []byte) {
 	sum := digest.Sum(nil)
 	MAC = []byte(hex.EncodeToString(sum))
 	return
-}
-
-func PKCS5Padding(plainText []byte, blockSize int) []byte {
-	padding := blockSize - (len(plainText) % blockSize)
-	padText := bytes.Repeat([]byte{byte(padding)}, padding)
-	newText := append(plainText, padText...)
-	return newText
-}
-
-func PKCS5UnPadding(plainText []byte) ([]byte, error) {
-	length := len(plainText)
-	number := int(plainText[length-1])
-	if number >= length {
-		return nil, errno.PADDING_INVALID
-	}
-	return plainText[:length-number], nil
 }

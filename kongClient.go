@@ -18,18 +18,18 @@ import (
 	"time"
 )
 
-type idn struct {
-	appId   string
-	appKey  string
-	channel string
-	alias   string
-	version string
+type Idn struct {
+	AppId   string `json:"appId"`
+	AppKey  string `json:"appkey"`
+	Channel string `json:"channel"`
+	Alias   string `json:"alias"`
+	Version string `json:"version"`
 }
 
 type kongClient struct {
 	header          http.Header
-	currentInfo     idn
-	targetInfo      idn
+	currentInfo     Idn
+	targetInfo      Idn
 	proxy           string
 	server          Server
 	isInit          bool
@@ -102,17 +102,17 @@ func (c *kongClient) ParseTokenInfo(head http.Header) error {
 }
 
 func (c *kongClient) parseClaims() error {
-	if c.currentInfo.appId == "" {
-		c.currentInfo.appId = c.server.GetAppId()
+	if c.currentInfo.AppId == "" {
+		c.currentInfo.AppId = c.server.GetAppId()
 	}
-	if c.currentInfo.appKey == "" {
-		c.currentInfo.appKey = c.server.GetAppKey()
+	if c.currentInfo.AppKey == "" {
+		c.currentInfo.AppKey = c.server.GetAppKey()
 	}
-	if c.currentInfo.channel == "" {
-		c.currentInfo.channel = c.server.GetChannel()
+	if c.currentInfo.Channel == "" {
+		c.currentInfo.Channel = c.server.GetChannel()
 	}
 
-	if c.currentInfo.appId == "" || c.currentInfo.appKey == "" || c.currentInfo.channel == "" {
+	if c.currentInfo.AppId == "" || c.currentInfo.AppKey == "" || c.currentInfo.Channel == "" {
 		return errno.REQUEST_HEADER_ERROR
 	}
 	c.callStacks = c.server.GetCallStack()
@@ -158,9 +158,9 @@ func (c *kongClient) SetAppInfo(appId, appKey, channel, version string) error {
 	if appId == "" || appKey == "" || channel == "" {
 		return errno.REQUEST_SETING_ERROR
 	}
-	c.currentInfo.appId = appId
-	c.currentInfo.appKey = appKey
-	c.currentInfo.channel = channel
+	c.currentInfo.AppId = appId
+	c.currentInfo.AppKey = appKey
+	c.currentInfo.Channel = channel
 	c.callStacks = []map[string]string{}
 	c.callStacks = append(c.callStacks, c.generateStackApp(appId, appKey, channel, version))
 	c.isInit = true
@@ -212,26 +212,26 @@ func (client *kongClient) SetConnectTimeout(timeout time.Duration) error {
 }
 
 func (c *kongClient) makeConsumer() {
-	c.consumer = MakeConsumer(c.currentInfo.appId, c.currentInfo.appKey, c.currentInfo.channel)
+	c.consumer = MakeConsumer(c.currentInfo.AppId, c.currentInfo.AppKey, c.currentInfo.Channel)
 	// todo secret
-	c.secret = []byte(MakeSecret(c.currentInfo.appId, c.currentInfo.appKey, c.currentInfo.channel))
+	c.secret = []byte(MakeSecret(c.currentInfo.AppId, c.currentInfo.AppKey, c.currentInfo.Channel))
 }
 
 func (c *kongClient) makeUrl(serviceName, targetChannelAlias, api string) string {
 	targetChannelAlias = strings.Trim(targetChannelAlias, "\\ /")
 	api = strings.Trim(api, "\\ /")
-	route := MakeRoute(c.currentInfo.appKey, c.currentInfo.channel, serviceName, targetChannelAlias)
-	c.targetInfo.appId = serviceName
-	c.targetInfo.alias = targetChannelAlias
+	route := MakeRoute(c.currentInfo.AppKey, c.currentInfo.Channel, serviceName, targetChannelAlias)
+	c.targetInfo.AppId = serviceName
+	c.targetInfo.Alias = targetChannelAlias
 	return c.proxy + "/" + route + "/" + api
 }
 
 func (c *kongClient) makeUrlForInstance(targetAppId, targetAppKey, targetChannel, api string) string {
 	api = strings.Trim(api, "\\ /")
-	route := MakeInstanceRoute(c.currentInfo.appId, c.currentInfo.appKey, c.currentInfo.channel, targetAppId, targetAppKey, targetChannel)
-	c.targetInfo.appId = targetAppId
-	c.targetInfo.appKey = targetAppKey
-	c.targetInfo.channel = targetChannel
+	route := MakeInstanceRoute(c.currentInfo.AppId, c.currentInfo.AppKey, c.currentInfo.Channel, targetAppId, targetAppKey, targetChannel)
+	c.targetInfo.AppId = targetAppId
+	c.targetInfo.AppKey = targetAppKey
+	c.targetInfo.Channel = targetChannel
 	return c.proxy + "/" + route + "/" + api
 }
 
@@ -242,18 +242,18 @@ func (c *kongClient) getSigner() *jwt.SigningMethodHMAC {
 // 组合token数据
 func (c *kongClient) claimsForThisRequest() MyClaimsForRequest {
 	return MyClaimsForRequest{
-		FromAppid:   c.currentInfo.appId,
-		FromAppkey:  c.currentInfo.appKey,
-		FromChannel: c.currentInfo.channel,
-		Alias:       c.targetInfo.alias,
+		FromAppid:   c.currentInfo.AppId,
+		FromAppkey:  c.currentInfo.AppKey,
+		FromChannel: c.currentInfo.Channel,
+		Alias:       c.targetInfo.Alias,
 		AccountId:   c.accountId,
 		SubOrgKey:   c.subOrgKey,
 		UserInfo:    c.baseAccountInfo,
 		CallStack: append(c.callStacks, map[string]string{
-			"appid":   c.targetInfo.appId,
-			"appkey":  c.targetInfo.appKey,
-			"channel": c.targetInfo.channel,
-			"alias":   c.targetInfo.alias,
+			"appid":   c.targetInfo.AppId,
+			"appkey":  c.targetInfo.AppKey,
+			"channel": c.targetInfo.Channel,
+			"alias":   c.targetInfo.Alias,
 		}),
 	}
 }
@@ -275,9 +275,9 @@ func (c *kongClient) MakeToken(claims MyClaimsForRequest, expire int64) string {
 // 生成一个指定时间过期的token
 func (c *kongClient) ReInitCurrentTokenWithSeconds(seconds int64) string {
 	claims := MyClaimsForRequest{
-		Appid:     c.currentInfo.appId,
-		Appkey:    c.currentInfo.appKey,
-		Channel:   c.currentInfo.channel,
+		Appid:     c.currentInfo.AppId,
+		Appkey:    c.currentInfo.AppKey,
+		Channel:   c.currentInfo.Channel,
 		SubOrgKey: c.subOrgKey,
 		CallStack: c.callStacks,
 	}
@@ -614,7 +614,7 @@ func (client *kongClient) SetToken(tokenString string) error {
 	if tokenString == "" {
 		return nil
 	}
-	if client.currentInfo.appId == "" || client.currentInfo.appKey == "" {
+	if client.currentInfo.AppId == "" || client.currentInfo.AppKey == "" {
 		return errno.SDK_NOT_INITED.Add("Should set current info by call setCurrentInfo")
 	}
 

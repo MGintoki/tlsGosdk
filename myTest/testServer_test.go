@@ -144,7 +144,8 @@ func TestHandshakeRequest(t *testing.T) {
 	url := REQUEST_URL + "/handshake"
 	client := http.Client{}
 	request, err := http.NewRequest("OPTION", url, bytes.NewReader(sendHsByte))
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	//request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
 		log.Fatal(err)

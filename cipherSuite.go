@@ -1,9 +1,14 @@
 package gosdk
 
 import (
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"github.com/pretty66/gosdk/cipherSuites"
 	"github.com/pretty66/gosdk/errno"
+	"github.com/wumansgy/goEncrypt"
 )
 
 //将接口嵌套到结构体中，方便以后结构体的拓展
@@ -19,7 +24,7 @@ type CipherSuiteInterface interface {
 	AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error)   //公钥加密
 	AsymmetricKeyDecrypt(cipherText, privateKey []byte) (plainText []byte, err error)  // 私钥解密
 	AsymmetricKeySign(data, privateKey []byte) (sign []byte, err error)                //私钥签名
-	AsymmetricKeyVerifySign(data, sign, publicKey []byte) (flag bool)                  //公钥验签
+	AsymmetricKeyVerifySign(data, sign, publicKey []byte) (flag bool, err error)       //公钥验签
 	SymmetricKeyEncrypt(plainText, symmetricKey []byte) (cipherText []byte, err error) //对称密钥加密
 	SymmetricKeyDecrypt(cipherText, symmetricKey []byte) (plainText []byte, err error) //对称密钥解密
 }
@@ -73,3 +78,29 @@ func CreateAppDataMAC(data map[string]interface{}) string {
 }
 
 const UUID_LENGTH = 32
+
+//这两个函数是无格式密钥（CA那边的密钥拿过来）的加密解密
+func AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error) {
+	block, _ := pem.Decode(publicKey)
+	publicKeyBlock, err := x509.ParsePKIXPublicKey(block.Bytes)
+	ecdsaPublicKey, ok := publicKeyBlock.(*ecdsa.PublicKey)
+	if !ok {
+		return cipherText, errno.ASYMMETRIC_PARSE_ERROR.Add("public key can not converse to ecdsa type")
+	}
+	publicKeyParse := goEncrypt.ImportECDSAPublic(ecdsaPublicKey)
+	cipherText, err = goEncrypt.Encrypt(rand.Reader, publicKeyParse, plainText, nil, nil)
+	return
+}
+
+func AsymmetricKeyDecrypt(cipherText, privateKey []byte) (plainText []byte, err error) {
+	block, _ := pem.Decode(privateKey)
+
+	privateKeyBlock, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return plainText, errno.ASYMMETRIC_PARSE_ERROR.Add(err.Error())
+	}
+	ecdsaPriKey := privateKeyBlock.(*ecdsa.PrivateKey)
+	eciesPrivateKey := goEncrypt.ImportECDSA(ecdsaPriKey)
+	plainText, err = eciesPrivateKey.Decrypt(cipherText, nil, nil)
+	return
+}

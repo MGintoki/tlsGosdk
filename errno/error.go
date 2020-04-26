@@ -83,6 +83,7 @@ var (
 	PADDING_INVALID          = &Errno{2002, "invalid padding "}
 	ASYMMETRIC_ENCRYPT_ERROR = &Errno{2003, "asymmetricKey encrypt error "}
 	ASYMMETRIC_DECRYPT_ERROR = &Errno{2004, "asymmetricKey decrypt error "}
+	ASYMMETRIC_PARSE_ERROR   = &Errno{2007, "asymmetricKey change type error "}
 	CREATE_MAC_ERROR         = &Errno{2005, "create MAC error "}
 	MAC_VERIFY_ERROR         = &Errno{2006, "MAC verify error "}
 
@@ -96,4 +97,21 @@ var (
 	 */
 	FILE_READ_ERROR  = &Errno{2201, "file read error "}
 	FILE_WRITE_ERROR = &Errno{2202, "file write error "}
+
+	/**
+	 * from 2301-2400 cache error
+	 */
+	CACHE_GET_ERROR = &Errno{2301, "CACHE_GET_ERROR "}
+
+	/**
+
+	 */
+	BASE64_ENCODE_ERROER = &Errno{2401, "BASE64_ENCODE_ERROR "}
+	BASE64_DECODE_ERROER = &Errno{2402, "BASE64_DECODE_ERROR "}
+
+	/**
+	 * from 2501-2600 handshake error
+	 */
+	INVALID_HANDSHAKE_STATE_ERROR = &Errno{2501, "invalid handshake state"}
+	HANDSHAKE_ERROR               = &Errno{2502, "handshake error"}
 )

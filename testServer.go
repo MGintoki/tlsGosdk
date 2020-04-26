@@ -1,7 +1,7 @@
 package gosdk
 
 type TlsServer struct {
-	serverInfo string
-	listenPath string
-	tlsConfig  *TlsConfig
+	ServerInfo string     `json:"serverInfo"`
+	ListenPath string     `json:"listenPath"`
+	TlsConfig  *TlsConfig `json:"tlsConfig"`
 }
