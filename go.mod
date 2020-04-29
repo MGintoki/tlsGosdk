@@ -1,4 +1,4 @@
-module github.com/pretty66/gosdk
+module github.com/MGintoki/gosdk
 
 go 1.12
 
