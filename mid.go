@@ -8,8 +8,11 @@ import (
 	"github.com/labstack/echo"
 	"github.com/pretty66/gosdk/errno"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -88,6 +91,34 @@ func TestMid(next echo.HandlerFunc) echo.HandlerFunc {
 					body := bytes.NewReader(dataPlainText)
 					c.Request().Body = ioutil.NopCloser(body)
 					return next(c)
+				case CONTENT_TYPE_FORM:
+					data := map[string]interface{}{}
+					err := json.Unmarshal(dataPlainText, &data)
+					if err != nil {
+						return errno.JSON_ERROR.Add(err.Error())
+					}
+					theData := url.Values{}
+					for k, v := range data {
+						theData.Set(k, fmt.Sprint(v))
+					}
+					body := strings.NewReader(theData.Encode())
+					c.Request().Body = ioutil.NopCloser(body)
+
+				case CONTENT_TYPE_MULTIPART:
+					data := map[string]interface{}{}
+					err := json.Unmarshal(dataPlainText, &data)
+					if err != nil {
+						return errno.JSON_ERROR.Add(err.Error())
+					}
+					buff := &bytes.Buffer{}
+					bodyWriter := multipart.NewWriter(buff)
+					// 写入其他参数
+					for k, v := range data {
+						err := bodyWriter.WriteField(k, fmt.Sprint(v))
+						if err != nil {
+							return errno.SDK_ERROR.Add(err.Error() + "error in mid multipart parse")
+						}
+					}
 				}
 
 			} else {
@@ -150,7 +181,9 @@ func GetServerTlsConfigMap() map[string]TlsConfig {
 func GetServerTlsConfigByIdns(currentInfo Idn) (tlsConfig *TlsConfig) {
 	tlsConfigMap := GetServerTlsConfigMap()
 	for _, v := range tlsConfigMap {
-		if currentInfo.AppKey == v.CurrentInfo.AppKey && currentInfo.Channel == v.CurrentInfo.Channel {
+		//if currentInfo.AppKey == v.CurrentInfo.AppKey && currentInfo.Channel == v.CurrentInfo.Channel {
+		if currentInfo.AppId == v.CurrentInfo.AppId {
+
 			//需要检测是否过期，过期的话返回nil
 			return &v
 		}

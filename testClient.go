@@ -111,7 +111,10 @@ func (c *TlsClient) Exec(method,
 		}
 		//发送appData并接收服务端响应
 		//默认发送json格式，由中间件接收到appData之后，根据header里的contentType重新设置request交给服务端
-		resHandshake, err := tlsConfig.HandshakeState.handleAction(tlsConfig, handshake, handshake.ActionCode)
+		//resHandshake, err := tlsConfig.HandshakeState.handleAction(tlsConfig, handshake, handshake.ActionCode)
+		resHandshake, err := c.sendHandshake(tlsConfig, handshake)
+		resHandshake, err = tlsConfig.HandshakeState.handleAction(tlsConfig, handshake, resHandshake.ActionCode)
+
 		if err != nil {
 			return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
 		}
@@ -254,7 +257,10 @@ func (c *TlsClient) initTlsConfig(reqUrl string) (out *TlsConfig, err error) {
 
 func (c *TlsClient) startTlsHandshake(tlsConfig *TlsConfig) (err error) {
 	//发送clientHello
-	clientHelloHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, nil, CLIENT_HELLO_CODE)
+	clientHello, err := tlsConfig.HandshakeState.handleAction(tlsConfig, nil, CLIENT_HELLO_CODE)
+	clientHelloHSOut, err := c.sendHandshake(tlsConfig, clientHello)
+	tlsConfig.HandshakeState = &ClientSentClientHelloState{}
+	tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE] = *clientHello
 	if err != nil {
 		return err
 	}
@@ -267,11 +273,14 @@ func (c *TlsClient) startTlsHandshake(tlsConfig *TlsConfig) (err error) {
 		return
 	}
 	fmt.Println("client hello done")
-	clientKeyExchangeHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, clientHelloHSOut, clientHelloHSOut.ActionCode)
+	clietKeyExchangeHS, err := tlsConfig.HandshakeState.handleAction(tlsConfig, clientHelloHSOut, clientHelloHSOut.ActionCode)
+	clientKeyExchangeHSOut, err := c.sendHandshake(tlsConfig, clietKeyExchangeHS)
+	tlsConfig.HandshakeState = &ClientSentKeyExchangeState{}
 	if err != nil {
 		return errno.HANDSHAKE_ERROR.Add(err.Error())
 	}
 	if clientKeyExchangeHSOut.ActionCode == SERVER_FINISHED_CODE && tlsConfig.IsEncryptRequired {
+		tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
 		tlsConfig.HandshakeState = &ClientEncryptedConnectionState{}
 	} else {
 		return errno.INVALID_HANDSHAKE_STATE_ERROR
@@ -279,6 +288,75 @@ func (c *TlsClient) startTlsHandshake(tlsConfig *TlsConfig) (err error) {
 
 	return nil
 }
+
+func (c *TlsClient) sendHandshake(tlsConfig *TlsConfig, handshake *Handshake) (out *Handshake, err error) {
+	//以后换成getClient方法
+	client := http.Client{}
+	reqUrl := tlsConfig.RequestUrl
+	hsByte, err := json.Marshal(handshake)
+	if err != nil {
+		return out, err
+	}
+
+	request, err := http.NewRequest("POST", reqUrl, bytes.NewReader(hsByte))
+	if err != nil {
+		return nil, errno.REQUEST_SETING_ERROR.Add(err.Error())
+	}
+	if handshake.ActionCode == CLIENT_HELLO_CODE {
+		request.Method = "OPTION"
+	}
+	request.Header.Set("Content-Type", CONTENT_TYPE_JSON)
+	request.Header.Set("HandShake-Code", strconv.Itoa(handshake.ActionCode))
+	if tlsConfig.SessionId != "" {
+		request.Header.Set("Session-Id", tlsConfig.SessionId)
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return out, err
+	}
+	defer response.Body.Close()
+	handshakeCode := response.Header.Get("HandShake-Code")
+	//如果请求头handshakeCode为serverAppdata，需要将其解析成handshake类型
+	if handshakeCode == strconv.Itoa(SERVER_APP_DATA_CODE) {
+		tmpMap := map[string]interface{}{}
+		err = json.NewDecoder(response.Body).Decode(&tmpMap)
+		fmt.Println(tmpMap)
+		handshakeStr := tmpMap["data"].(string)
+		handshakeStrDecodeByte, _ := base64.StdEncoding.DecodeString(handshakeStr)
+		err = json.Unmarshal(handshakeStrDecodeByte, &out)
+		return out, err
+	}
+	err = json.NewDecoder(response.Body).Decode(&out)
+	return out, err
+}
+
+//func (c *TlsClient) startTlsHandshake(tlsConfig *TlsConfig) (err error) {
+//	//发送clientHello
+//	clientHelloHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, nil, CLIENT_HELLO_CODE)
+//	if err != nil {
+//		return err
+//	}
+//	if clientHelloHSOut.ActionCode == SERVER_HELLO_CODE && clientHelloHSOut.ServerHello.IsServerEncryptRequired {
+//		tlsConfig.HandshakeState = &ClientReceivedServerHelloState{}
+//		tlsConfig.IsEncryptRequired = true
+//	} else if clientHelloHSOut.ActionCode == SERVER_HELLO_CODE && clientHelloHSOut.ServerHello.IsServerEncryptRequired == false {
+//		tlsConfig.HandshakeState = &ClientNoEncryptConnectionState{}
+//		tlsConfig.IsEncryptRequired = false
+//		return
+//	}
+//	fmt.Println("client hello done")
+//	clientKeyExchangeHSOut, err := tlsConfig.HandshakeState.handleAction(tlsConfig, clientHelloHSOut, clientHelloHSOut.ActionCode)
+//	if err != nil {
+//		return errno.HANDSHAKE_ERROR.Add(err.Error())
+//	}
+//	if clientKeyExchangeHSOut.ActionCode == SERVER_FINISHED_CODE && tlsConfig.IsEncryptRequired {
+//		tlsConfig.HandshakeState = &ClientEncryptedConnectionState{}
+//	} else {
+//		return errno.INVALID_HANDSHAKE_STATE_ERROR
+//	}
+//
+//	return nil
+//}
 
 func (c *TlsConfig) SendHandshake(handshake *Handshake) (out *Handshake, err error) {
 	//以后换成getClient方法
@@ -380,29 +458,30 @@ func (c *TlsClient) getCipherSuites(currentInfo Idn, targetInfo Idn) (out []int)
 	return
 }
 
-var _clientTlsConfigMap map[string]TlsConfig
-
-func GetClientTlsConfigMap() map[string]TlsConfig {
-	if _clientTlsConfigMap == nil {
-		_clientTlsConfigMap = map[string]TlsConfig{}
-	}
-	return _clientTlsConfigMap
-}
-func GetClientTlsConfigByIdns(currentInfo Idn, targetInfo Idn) (tlsConfig *TlsConfig, err error) {
-	tlsConfigMap := GetClientTlsConfigMap()
-	for _, v := range tlsConfigMap {
-		if currentInfo.AppKey == v.CurrentInfo.AppKey && currentInfo.Channel == v.CurrentInfo.Channel && targetInfo.AppKey == v.TargetInfo.AppKey && targetInfo.Channel == v.TargetInfo.Channel {
-			return &v, nil
-		}
-	}
-	return nil, nil
-}
-
-func SaveClientTlsConfig(tlsConfig *TlsConfig) error {
-	tlsConfigMap := GetClientTlsConfigMap()
-	tlsConfigMap[tlsConfig.SessionId] = *tlsConfig
-	return nil
-}
+//
+//var _clientTlsConfigMap map[string]TlsConfig
+//
+//func GetClientTlsConfigMap() map[string]TlsConfig {
+//	if _clientTlsConfigMap == nil {
+//		_clientTlsConfigMap = map[string]TlsConfig{}
+//	}
+//	return _clientTlsConfigMap
+//}
+//func GetClientTlsConfigByIdns(currentInfo Idn, targetInfo Idn) (tlsConfig *TlsConfig, err error) {
+//	tlsConfigMap := GetClientTlsConfigMap()
+//	for _, v := range tlsConfigMap {
+//		if currentInfo.AppKey == v.CurrentInfo.AppKey && currentInfo.Channel == v.CurrentInfo.Channel && targetInfo.AppKey == v.TargetInfo.AppKey && targetInfo.Channel == v.TargetInfo.Channel {
+//			return &v, nil
+//		}
+//	}
+//	return nil, nil
+//}
+//
+//func SaveClientTlsConfig(tlsConfig *TlsConfig) error {
+//	tlsConfigMap := GetClientTlsConfigMap()
+//	tlsConfigMap[tlsConfig.SessionId] = *tlsConfig
+//	return nil
+//}
 
 ////从缓存中，通过sessionId获取到TlsConfig
 //func GetTlsConfigBySessionId(sessionId string) (tlsConfig *TlsConfig, err error) {

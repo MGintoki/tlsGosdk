@@ -57,15 +57,16 @@ func (c *ClientInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 			SendTime:      time.Time{},
 			ClientHello:   clientHello,
 		}
-		fmt.Println("client hello handshake init ")
-		out, err = tlsConfig.SendHandshake(clientHelloHandshake)
-		fmt.Println("client hello sent")
-		if err != nil {
-			return out, err
-		}
-		tlsConfig.HandshakeState = &ClientSentClientHelloState{}
-		tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE] = *clientHelloHandshake
-		return out, err
+		//fmt.Println("client hello handshake init ")
+		//out, err = tlsConfig.SendHandshake(clientHelloHandshake)
+		//fmt.Println("client hello sent")
+		//if err != nil {
+		//	return out, err
+		//}
+		//tlsConfig.HandshakeState = &ClientSentClientHelloState{}
+		//tlsConfig.HandshakeMsgs[CLIENT_HELLO_CODE] = *clientHelloHandshake
+		//return out, err
+		return clientHelloHandshake, err
 
 	default:
 		return out, err
@@ -151,15 +152,16 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		MACEncryptedToStr := base64.StdEncoding.EncodeToString(MACEncrypted)
 		clientKeyExchangeHandshake.ClientKeyExchange.MAC = MACEncryptedToStr
 		fmt.Println("generate client key exchange")
-		out, err := tlsConfig.SendHandshake(clientKeyExchangeHandshake)
-		fmt.Println("sent client key exchange")
-		tlsConfig.HandshakeState = &ClientSentKeyExchangeState{}
-		if err != nil {
-			return out, err
-		}
-		fmt.Println("received server Finished")
-		tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
-		return out, err
+		//out, err := tlsConfig.SendHandshake(clientKeyExchangeHandshake)
+		//fmt.Println("sent client key exchange")
+		//tlsConfig.HandshakeState = &ClientSentKeyExchangeState{}
+		//if err != nil {
+		//	return out, err
+		//}
+		//fmt.Println("received server Finished")
+		//tlsConfig.HandshakeState = &ClientReceivedServerFinishedState{}
+		//return out, err
+		return clientKeyExchangeHandshake, err
 	}
 	return
 }
@@ -213,60 +215,87 @@ func (c *ClientEncryptedConnectionState) currentState() int {
 
 func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
-	case CLIENT_APP_DATA_CODE:
-		out, err = tlsConfig.SendHandshake(handshake)
+	case SERVER_APP_DATA_CODE:
+		//对appData的MAC进行一个验证
+		data := handshake.AppData.Data
+		dataByte, err := base64.StdEncoding.DecodeString(data)
 		if err != nil {
-			return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
+			return out, errno.BASE64_DECODE_ERROER.Add(err.Error())
 		}
-		if out.ActionCode == SERVER_APP_DATA_CODE {
-			//对appData的MAC进行一个验证
-			data := out.AppData.Data
-			dataByte, err := base64.StdEncoding.DecodeString(data)
-			if err != nil {
-				return out, errno.BASE64_DECODE_ERROER.Add(err.Error())
-			}
-			dataDecrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(dataByte, tlsConfig.SymmetricKey)
-			if err != nil {
-				return out, errno.SYMMETRIC_KEY_DECRYPT_ERROR.Add(err.Error())
-			}
-			MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataDecrypted)
-			MACReceivedByte, err := base64.StdEncoding.DecodeString(out.AppData.MAC)
-			if err != nil {
-				return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
-			}
-			MACReceived, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(MACReceivedByte, tlsConfig.SymmetricKey)
-			if err != nil {
-				return nil, errno.JSON_ERROR.Add(err.Error())
-			}
-			if string(MACLocal) != string(MACReceived) {
-				return nil, errno.MAC_VERIFY_ERROR
-			}
+		dataDecrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(dataByte, tlsConfig.SymmetricKey)
+		if err != nil {
+			return out, errno.SYMMETRIC_KEY_DECRYPT_ERROR.Add(err.Error())
+		}
+		MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataDecrypted)
+		MACReceivedByte, err := base64.StdEncoding.DecodeString(handshake.AppData.MAC)
+		if err != nil {
+			return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
+		}
+		MACReceived, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(MACReceivedByte, tlsConfig.SymmetricKey)
+		if err != nil {
+			return nil, errno.JSON_ERROR.Add(err.Error())
+		}
+		if string(MACLocal) != string(MACReceived) {
+			return nil, errno.MAC_VERIFY_ERROR
+		}
 
-		} else {
-			return nil, errno.HANDSHAKE_ERROR.Add("Danger Connection")
-		}
-		return out, err
-		//case CLIENT_CLOSE_NOTIFY_CODE:
-		//	clientCloseNotify := &ClientCloseNotify{}
-		//	handshake := &Handshake{
-		//		Version:           "",
-		//		HandshakeType:     0,
-		//		ActionCode:        CLIENT_CLOSE_NOTIFY_CODE,
-		//		SessionId:         handshake.SessionId,
-		//		SendTime:          time.Time{},
-		//		ClientCloseNotify: clientCloseNotify,
-		//	}
-		//	tlsConfig.HandshakeState = &ClientClosedState{}
-		//	fmt.Println("Client State -> Client Closed")
-		//	err = SaveTLSConfigToTlsConfigMap(CLIENT_TLS_CONFIG_FILE_PATH, *tlsConfig)
-		//	if err != nil {
-		//		return nil, err
-		//	}
-		//	fmt.Println("Save TlsConfig To Config Map")
-		//	out, err = tlsConfig.SendHandshake(handshake)
-		//	fmt.Println("Send Client Close Notify")
-		//	return
+		return handshake, err
 	}
+	//case CLIENT_APP_DATA_CODE:
+	//	out, err = tlsConfig.SendHandshake(handshake)
+	//	if err != nil {
+	//		return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
+	//	}
+	//	if out.ActionCode == SERVER_APP_DATA_CODE {
+	//		//对appData的MAC进行一个验证
+	//		data := out.AppData.Data
+	//		dataByte, err := base64.StdEncoding.DecodeString(data)
+	//		if err != nil {
+	//			return out, errno.BASE64_DECODE_ERROER.Add(err.Error())
+	//		}
+	//		dataDecrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(dataByte, tlsConfig.SymmetricKey)
+	//		if err != nil {
+	//			return out, errno.SYMMETRIC_KEY_DECRYPT_ERROR.Add(err.Error())
+	//		}
+	//		MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataDecrypted)
+	//		MACReceivedByte, err := base64.StdEncoding.DecodeString(out.AppData.MAC)
+	//		if err != nil {
+	//			return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
+	//		}
+	//		MACReceived, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(MACReceivedByte, tlsConfig.SymmetricKey)
+	//		if err != nil {
+	//			return nil, errno.JSON_ERROR.Add(err.Error())
+	//		}
+	//		if string(MACLocal) != string(MACReceived) {
+	//			return nil, errno.MAC_VERIFY_ERROR
+	//		}
+	//
+	//	} else {
+	//		return nil, errno.HANDSHAKE_ERROR.Add("Danger Connection")
+	//	}
+	//	return out, err
+	//}
+	//case CLIENT_CLOSE_NOTIFY_CODE:
+	//	clientCloseNotify := &ClientCloseNotify{}
+	//	handshake := &Handshake{
+	//		Version:           "",
+	//		HandshakeType:     0,
+	//		ActionCode:        CLIENT_CLOSE_NOTIFY_CODE,
+	//		SessionId:         handshake.SessionId,
+	//		SendTime:          time.Time{},
+	//		ClientCloseNotify: clientCloseNotify,
+	//	}
+	//	tlsConfig.HandshakeState = &ClientClosedState{}
+	//	fmt.Println("Client State -> Client Closed")
+	//	err = SaveTLSConfigToTlsConfigMap(CLIENT_TLS_CONFIG_FILE_PATH, *tlsConfig)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	fmt.Println("Save TlsConfig To Config Map")
+	//	out, err = tlsConfig.SendHandshake(handshake)
+	//	fmt.Println("Send Client Close Notify")
+	//	return
+
 	return
 }
 

@@ -417,3 +417,7 @@ func TestTlsClient(t *testing.T) {
 	}
 	fmt.Println(out2)
 }
+
+func testFunction(c *Client) {
+
+}
