@@ -3,6 +3,7 @@ package middle
 import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/pretty66/gosdk"
 )
 
 func init() {
@@ -10,6 +11,6 @@ func init() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	LoadMidRoute(e)
+	gosdk.LoadMidRoute(e)
 
 }

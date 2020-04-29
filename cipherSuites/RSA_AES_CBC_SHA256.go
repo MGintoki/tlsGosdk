@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"github.com/pretty66/gosdk/errno"
-
 	"log"
 	"runtime"
 )
@@ -44,7 +43,7 @@ func (c *RSA_AES_CBC_SHA256) CreateSymmetricKey(randoms []string) (key []byte) {
 	return GetRandom(KEY_LENGTH)
 }
 
-func (c *RSA_AES_CBC_SHA256) VerifyCert(cert []byte, certChain [][]byte, publicKey []byte) (out bool, err error) {
+func (c *RSA_AES_CBC_SHA256) VerifyCert(cert []byte, certChain []byte, publicKey []byte) (out bool, err error) {
 
 	return true, err
 }
@@ -144,19 +143,35 @@ func (c *RSA_AES_CBC_SHA256) AsymmetricKeyVerifySign(data, sign, publicKey []byt
 	return result == nil, err
 }
 
+//func (c *RSA_AES_CBC_SHA256) SymmetricKeyEncrypt(plainText, symmetricKey []byte) (cipherText []byte, err error) {
+//	if len(symmetricKey) != 16 && len(symmetricKey) != 24 && len(symmetricKey) != 32 {
+//		return nil, errno.SYMMETRIC_KEY_INVALID.Add("must in 16 24 32")
+//	}
+//	block, err := aes.NewCipher(symmetricKey)
+//	if err != nil {
+//		return nil, err
+//	}
+//	paddingText := PKCS5Padding(plainText, block.BlockSize())
+//	iv := []byte(IVAES)
+//	blockMode := cipher.NewCBCEncrypter(block, iv)
+//	cipherText = make([]byte, len(paddingText))
+//	blockMode.CryptBlocks(cipherText, paddingText)
+//	return cipherText, nil
+//}
+
 func (c *RSA_AES_CBC_SHA256) SymmetricKeyEncrypt(plainText, symmetricKey []byte) (cipherText []byte, err error) {
 	if len(symmetricKey) != 16 && len(symmetricKey) != 24 && len(symmetricKey) != 32 {
 		return nil, errno.SYMMETRIC_KEY_INVALID.Add("must in 16 24 32")
 	}
+	iv := []byte(IVAES)
 	block, err := aes.NewCipher(symmetricKey)
 	if err != nil {
 		return nil, err
 	}
-	paddingText := PKCS5Padding(plainText, block.BlockSize())
-	iv := []byte(IVAES)
-	blockMode := cipher.NewCBCEncrypter(block, iv)
-	cipherText = make([]byte, len(paddingText))
-	blockMode.CryptBlocks(cipherText, paddingText)
+	stream := cipher.NewCTR(block, iv)
+
+	cipherText = make([]byte, len(plainText))
+	stream.XORKeyStream(cipherText, plainText)
 	return cipherText, nil
 }
 
@@ -169,13 +184,31 @@ func (c *RSA_AES_CBC_SHA256) SymmetricKeyDecrypt(cipherText, symmetricKey []byte
 		return nil, err
 	}
 	iv := []byte(IVAES)
-	blockMode := cipher.NewCBCDecrypter(block, iv)
-	paddingText := make([]byte, len(cipherText))
-	blockMode.CryptBlocks(paddingText, cipherText)
+	stream := cipher.NewCTR(block, iv)
 
-	plainText, err = PKCS5UnPadding(paddingText)
+	plainText = make([]byte, len(cipherText))
+	stream.XORKeyStream(plainText, cipherText)
 	return
 }
+
+//func (c *RSA_AES_CBC_SHA256) SymmetricKeyDecrypt(cipherText, symmetricKey []byte) (plainText []byte, err error) {
+//	if len(symmetricKey) != 16 && len(symmetricKey) != 24 && len(symmetricKey) != 32 {
+//		return nil, errno.SYMMETRIC_KEY_INVALID.Add("must in 16 24 32")
+//	}
+//	block, err := aes.NewCipher(symmetricKey)
+//	if err != nil {
+//		return nil, err
+//	}
+//	iv := []byte(IVAES)
+//	blockMode := cipher.NewCBCDecrypter(block, iv)
+//	paddingText := make([]byte, len(cipherText))
+//	blockMode.CryptBlocks(paddingText, cipherText)
+//	fmt.Println(aes.BlockSize)
+//
+//	plainText, err = PKCS5UnPadding(paddingText)
+//	plainText = PKCS7UnPadding(paddingText)
+//	return
+//}
 
 func (c *RSA_AES_CBC_SHA256) CreateMAC(data []byte) (MAC []byte) {
 	digest := sha256.New()

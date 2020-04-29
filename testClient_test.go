@@ -20,7 +20,7 @@ func HelloServer2(w http.ResponseWriter, req *http.Request) {
 
 func TestHelloServer(t *testing.T) {
 
-	http.HandleFunc("/", HelloServer2)
+	http.HandleFunc("/hello", HelloServer2)
 	err := http.ListenAndServe("localhost:8081", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err.Error())
@@ -107,7 +107,7 @@ func TestClientStartTLS(t *testing.T) {
 func TestServerStartTLS(t *testing.T) {
 	server := &TlsServer{
 		ServerInfo: "test server",
-		ListenPath: "localhost:8081",
+		ListenPath: "localhost:8086",
 		TlsConfig:  nil,
 	}
 	hsmap := map[int]Handshake{}
@@ -252,102 +252,102 @@ nwIDAQAB
 -----END  WUMAN  RSA PUBLIC KEY -----`
 )
 
-func TestCache(t *testing.T) {
-	tlsConfigMap, err := GetTlsConfigMap()
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(tlsConfigMap)
-	c1Idn1 := Idn{
-		AppId:   "",
-		AppKey:  "123",
-		Channel: "123",
-	}
-	c1Idn2 := Idn{
-		AppId:   "",
-		AppKey:  "456",
-		Channel: "456",
-	}
-	c1 := &TlsConfig{
-		SessionId:             "123456",
-		IsClient:              false,
-		CurrentInfo:           c1Idn1,
-		TargetInfo:            c1Idn2,
-		HandshakeState:        nil,
-		IsEncryptRequired:     false,
-		IsCertRequired:        false,
-		State:                 0,
-		CipherSuites:          nil,
-		CipherSuite:           0,
-		Time:                  time.Time{},
-		Timeout:               0,
-		Randoms:               nil,
-		PrivateKey:            nil,
-		PublicKey:             nil,
-		SymmetricKey:          nil,
-		SymmetricKeyCreatedAt: time.Time{},
-		SymmetricKeyExpiresAt: time.Time{},
-		Cert:                  nil,
-		CertChain:             nil,
-		CertLoader:            nil,
-		HandshakeMsgs:         nil,
-		Logs:                  nil,
-	}
-	err = SaveTlsConfig(c1)
-	if err != nil {
-		fmt.Println(err)
-	}
-	c2Idn1 := Idn{
-		AppId:   "",
-		AppKey:  "abc",
-		Channel: "abc",
-	}
-	c2Idn2 := Idn{
-		AppId:   "",
-		AppKey:  "def",
-		Channel: "def",
-	}
-	c2 := &TlsConfig{
-		SessionId:             "abcdef",
-		IsClient:              false,
-		CurrentInfo:           c2Idn1,
-		TargetInfo:            c2Idn2,
-		HandshakeState:        nil,
-		IsEncryptRequired:     false,
-		IsCertRequired:        false,
-		State:                 0,
-		CipherSuites:          nil,
-		CipherSuite:           0,
-		Time:                  time.Time{},
-		Timeout:               0,
-		Randoms:               nil,
-		PrivateKey:            nil,
-		PublicKey:             nil,
-		SymmetricKey:          nil,
-		SymmetricKeyCreatedAt: time.Time{},
-		SymmetricKeyExpiresAt: time.Time{},
-		Cert:                  nil,
-		CertChain:             nil,
-		CertLoader:            nil,
-		HandshakeMsgs:         nil,
-		Logs:                  nil,
-	}
-	err = SaveTlsConfig(c2)
-	if err != nil {
-
-	}
-	cacheC1, err := GetTlsConfigBySessionId("123456")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(cacheC1)
-	cacheC2, err := GetTlsConfigByIdns(c2Idn1, c2Idn2)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(cacheC2)
-
-}
+//func TestCache(t *testing.T) {
+//	tlsConfigMap, err := GetTlsConfigMap()
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(tlsConfigMap)
+//	c1Idn1 := Idn{
+//		AppId:   "",
+//		AppKey:  "123",
+//		Channel: "123",
+//	}
+//	c1Idn2 := Idn{
+//		AppId:   "",
+//		AppKey:  "456",
+//		Channel: "456",
+//	}
+//	c1 := &TlsConfig{
+//		SessionId:             "123456",
+//		IsClient:              false,
+//		CurrentInfo:           c1Idn1,
+//		TargetInfo:            c1Idn2,
+//		HandshakeState:        nil,
+//		IsEncryptRequired:     false,
+//		IsCertRequired:        false,
+//		State:                 0,
+//		CipherSuites:          nil,
+//		CipherSuite:           0,
+//		Time:                  time.Time{},
+//		Timeout:               0,
+//		Randoms:               nil,
+//		PrivateKey:            nil,
+//		PublicKey:             nil,
+//		SymmetricKey:          nil,
+//		SymmetricKeyCreatedAt: time.Time{},
+//		SymmetricKeyExpiresAt: time.Time{},
+//		Cert:                  nil,
+//		CertChain:             nil,
+//		CertLoader:            nil,
+//		HandshakeMsgs:         nil,
+//		Logs:                  nil,
+//	}
+//	err = SaveTlsConfig(c1)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	c2Idn1 := Idn{
+//		AppId:   "",
+//		AppKey:  "abc",
+//		Channel: "abc",
+//	}
+//	c2Idn2 := Idn{
+//		AppId:   "",
+//		AppKey:  "def",
+//		Channel: "def",
+//	}
+//	c2 := &TlsConfig{
+//		SessionId:             "abcdef",
+//		IsClient:              false,
+//		CurrentInfo:           c2Idn1,
+//		TargetInfo:            c2Idn2,
+//		HandshakeState:        nil,
+//		IsEncryptRequired:     false,
+//		IsCertRequired:        false,
+//		State:                 0,
+//		CipherSuites:          nil,
+//		CipherSuite:           0,
+//		Time:                  time.Time{},
+//		Timeout:               0,
+//		Randoms:               nil,
+//		PrivateKey:            nil,
+//		PublicKey:             nil,
+//		SymmetricKey:          nil,
+//		SymmetricKeyCreatedAt: time.Time{},
+//		SymmetricKeyExpiresAt: time.Time{},
+//		Cert:                  nil,
+//		CertChain:             nil,
+//		CertLoader:            nil,
+//		HandshakeMsgs:         nil,
+//		Logs:                  nil,
+//	}
+//	err = SaveTlsConfig(c2)
+//	if err != nil {
+//
+//	}
+//	cacheC1, err := GetTlsConfigBySessionId("123456")
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(cacheC1)
+//	cacheC2, err := GetTlsConfigByIdns(c2Idn1, c2Idn2)
+//	if err != nil {
+//		fmt.Println(err)
+//	}
+//	fmt.Println(cacheC2)
+//
+//}
 
 type AA struct {
 	Name string `json:"name"`
@@ -373,4 +373,47 @@ func TestSS(t *testing.T) {
 
 func ss(a *AA) {
 	a.Name = "dslkjdsfls"
+}
+
+func TestTlsClient(t *testing.T) {
+	idn1 := Idn{
+		AppId:   "",
+		AppKey:  "1234567",
+		Channel: "2",
+		Alias:   "",
+		Version: "",
+	}
+	idn2 := Idn{
+		AppId:   "",
+		AppKey:  "123456",
+		Channel: "2",
+		Alias:   "",
+		Version: "",
+	}
+	tlsClient := TlsClient{
+		CurrentInfo: idn1,
+		TargetInfo:  idn2,
+		RequestPath: "",
+		TlsConfig:   nil,
+	}
+	data := map[string]interface{}{
+		"test1": "test1",
+		"test2": "222",
+		"test3": []string{
+			"1", "2", "3",
+		},
+	}
+	out, err := tlsClient.Exec("post", REQUEST_URL, data, "", nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(out)
+	data2 := data
+	data2["test6"] = "666"
+	data2["test7"] = 777
+	out2, err := tlsClient.Exec("post", REQUEST_URL, data, "", nil)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(out2)
 }

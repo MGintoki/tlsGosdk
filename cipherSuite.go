@@ -20,7 +20,7 @@ type CipherSuiteInterface interface {
 	CipherSuiteKey() (key int)                        //获取加密套件KEY
 	CreateSymmetricKey(randoms []string) (key []byte) // 生成通信密钥
 	CreateMAC(data []byte) []byte
-	VerifyCert(cert []byte, certChain [][]byte, publicKey []byte) (out bool, err error)
+	VerifyCert(cert []byte, certChain []byte, publicKey []byte) (out bool, err error)
 	AsymmetricKeyEncrypt(plainText, publicKey []byte) (cipherText []byte, err error)   //公钥加密
 	AsymmetricKeyDecrypt(cipherText, privateKey []byte) (plainText []byte, err error)  // 私钥解密
 	AsymmetricKeySign(data, privateKey []byte) (sign []byte, err error)                //私钥签名
@@ -38,8 +38,12 @@ func NewCipherSuiteModel(cipherSuitCode int) *CipherSuite {
 		case cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]:
 			_cipherSuite = &CipherSuite{CipherSuiteInterface: cipherSuites.NewRSA_AES_CBC_SHA256Model()}
 			_currentCipherSuiteCode = cipherSuites.CIPHER_SUITE_MAP["RSA_AES_CBC_SHA256"]
-			//return &CipherSuite{CipherSuiteInterface: csIns}
+		//return &CipherSuite{CipherSuiteInterface: csIns}
+		case cipherSuites.CIPHER_SUITE_MAP["ECDSA_AES256_CBC_SHA256"]:
+			_cipherSuite = &CipherSuite{CipherSuiteInterface: cipherSuites.NewECDSA_AES256_CBC_SHA256Model()}
+			_currentCipherSuiteCode = cipherSuites.CIPHER_SUITE_MAP["ECDSA_AES256_CBC_SHA256"]
 		}
+
 	}
 	return _cipherSuite
 }

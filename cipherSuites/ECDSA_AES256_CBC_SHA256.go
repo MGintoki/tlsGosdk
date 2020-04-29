@@ -45,7 +45,7 @@ func (c *ECDSA_AES256_CBC_SHA256) CreateMAC(data []byte) []byte {
 	return MAC
 }
 
-func (c *ECDSA_AES256_CBC_SHA256) VerifyCert(cert []byte, certChain [][]byte, publicKey []byte) (out bool, err error) {
+func (c *ECDSA_AES256_CBC_SHA256) VerifyCert(cert []byte, certChain []byte, publicKey []byte) (out bool, err error) {
 	return true, err
 }
 

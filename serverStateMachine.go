@@ -21,6 +21,7 @@ func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 	case CLIENT_HELLO_CODE:
 		//如果client hello的session id不为空，尝试复用session id 对应的配置
 		//否则 需要重新协商密钥
+		tlsConfig.HandshakeState = &ServerReceivedClientHelloState{}
 		if handshake.SessionId != "" {
 
 		} else {
@@ -35,6 +36,7 @@ func (c *ServerInitState) handleAction(tlsConfig *TlsConfig, handshake *Handshak
 				}
 				//根据客户端加密套件表和服务端加密套件表，协商合适的加密套件
 				cipherSuite := negotiateCipherSuite(handshake.ClientHello.CipherSuites, tlsConfig.CipherSuites)
+				tlsConfig.CipherSuite = cipherSuite
 				serverHello.CipherSuite = cipherSuite
 				if handshake.ClientHello.IsCertRequired {
 					serverHello.Cert = tlsConfig.Cert
@@ -88,7 +90,6 @@ func (c *ServerSentServerHelloState) currentState() int {
 func (c *ServerSentServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case CLIENT_KEY_EXCHANGE_CODE:
-		tlsConfig.SessionId = handshake.SessionId
 		symmetricKeyByte := handshake.ClientKeyExchange.SymmetricKey
 		//因为接收到的SymmetricKey是采用公钥加密的，所以要先用私钥解密
 		symmetricKeyParse, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.AsymmetricKeyDecrypt(symmetricKeyByte, tlsConfig.PrivateKey)

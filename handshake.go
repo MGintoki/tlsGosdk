@@ -29,12 +29,12 @@ type ClientHello struct {
 }
 
 type ServerHello struct {
-	IsServerEncryptRequired bool     `json:"isServerEncryptRequired"`
-	CipherSuite             int      `json:"cipherSuite"`
-	PublicKey               []byte   `json:"publicKey"`
-	Cert                    []byte   `json:"cert"`            //服务端TLS证书
-	CertVerifyChain         [][]byte `json:"certVerifyChain"` //服务端TLS证书验证链
-	Random                  string   `json:"random"`
+	IsServerEncryptRequired bool   `json:"isServerEncryptRequired"`
+	CipherSuite             int    `json:"cipherSuite"`
+	PublicKey               []byte `json:"publicKey"`
+	Cert                    []byte `json:"cert"`            //服务端TLS证书
+	CertVerifyChain         []byte `json:"certVerifyChain"` //服务端TLS证书验证链
+	Random                  string `json:"random"`
 }
 
 type ClientKeyExchange struct {
@@ -132,8 +132,8 @@ const (
 //	CLIENT_HELLO_CODE: "/handleClientHello",
 //}
 
-const REQUEST_URL = "http://127.0.0.1:8081"
-const LISTEN_URL = "localhost:8081"
+const REQUEST_URL = "http://127.0.0.1:8086/test"
+const LISTEN_URL = "localhost:8086"
 const LISTEN_TLS = "/handleTLS/"
 
 func GetHSRequestRoute() string {

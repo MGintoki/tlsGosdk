@@ -173,7 +173,7 @@ func TestRSA_AES_CBC_SHA256_AsymmetricKeyVerify(t *testing.T) {
 	fmt.Println("RSA数字签名的消息为：", hex.EncodeToString(signmsg))
 
 	// 验证数字签名正不正确
-	result := rsa.AsymmetricKeyVerifySign(msg, signmsg, publicKey)
+	result, err := rsa.AsymmetricKeyVerifySign(msg, signmsg, publicKey)
 	if result { // 如果result返回的是 true 那么就是本人签名，否则不是，只有私钥加密，相对的公钥验证才可以认为是本人
 		fmt.Println("RSA数字签名正确，是本人")
 	} else {

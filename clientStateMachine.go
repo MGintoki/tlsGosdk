@@ -99,6 +99,7 @@ func (c *ClientReceivedServerHelloState) currentState() int {
 func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, handshake *Handshake, actionCode int) (out *Handshake, err error) {
 	switch actionCode {
 	case SERVER_HELLO_CODE:
+		tlsConfig.CipherSuite = handshake.ServerHello.CipherSuite
 		flag, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.VerifyCert(handshake.ServerHello.Cert, handshake.ServerHello.CertVerifyChain, handshake.ServerHello.PublicKey)
 		if err != nil {
 
@@ -106,9 +107,7 @@ func (c *ClientReceivedServerHelloState) handleAction(tlsConfig *TlsConfig, hand
 		if !flag {
 			return out, errno.CERT_VERIFY_ERROR
 		}
-		tlsConfig.CipherSuite = handshake.ServerHello.CipherSuite
 		//如果客户端不能直接获取服务端的证书和公钥，使用server hello 里的证书以及公钥
-
 		if tlsConfig.IsCertRequired {
 			tlsConfig.Cert = handshake.ServerHello.Cert
 			tlsConfig.CertChain = handshake.ServerHello.CertVerifyChain
@@ -219,12 +218,19 @@ func (c *ClientEncryptedConnectionState) handleAction(tlsConfig *TlsConfig, hand
 		if err != nil {
 			return nil, errno.HANDSHAKE_ERROR.Add(err.Error())
 		}
-		if out.ActionCode == CLIENT_APP_DATA_CODE {
+		if out.ActionCode == SERVER_APP_DATA_CODE {
 			//对appData的MAC进行一个验证
 			data := out.AppData.Data
 			dataByte, err := base64.StdEncoding.DecodeString(data)
-			MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataByte)
-			MACReceivedByte, err := base64.StdEncoding.DecodeString(handshake.AppData.MAC)
+			if err != nil {
+				return out, errno.BASE64_DECODE_ERROER.Add(err.Error())
+			}
+			dataDecrypted, err := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.SymmetricKeyDecrypt(dataByte, tlsConfig.SymmetricKey)
+			if err != nil {
+				return out, errno.SYMMETRIC_KEY_DECRYPT_ERROR.Add(err.Error())
+			}
+			MACLocal := NewCipherSuiteModel(tlsConfig.CipherSuite).CipherSuiteInterface.CreateMAC(dataDecrypted)
+			MACReceivedByte, err := base64.StdEncoding.DecodeString(out.AppData.MAC)
 			if err != nil {
 				return nil, errno.BASE64_DECODE_ERROER.Add(err.Error())
 			}
