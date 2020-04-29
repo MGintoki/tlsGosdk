@@ -213,7 +213,7 @@ func NewOut(c echo.Context, err error, data interface{}) error {
 		Channel: "1234567",
 	}
 	tlsConfig := GetServerTlsConfigByIdns(tmpIdn)
-	if tlsConfig.IsEncryptRequired == true && tlsConfig.HandshakeState.currentState() == SERVER_ENCRYPTED_CONNECTION_STATE {
+	if tlsConfig != nil && tlsConfig.IsEncryptRequired == true && tlsConfig.HandshakeState.currentState() == SERVER_ENCRYPTED_CONNECTION_STATE {
 		dataByte, err := json.Marshal(data)
 		if err != nil {
 			return errno.JSON_ERROR.Add(err.Error())
